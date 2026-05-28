@@ -11,6 +11,11 @@ export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
 export * from './rest/info/get-l2-book';
 export * from './rest/info/get-clearinghouse-state';
+export * from './rest/info/get-open-orders';
+export * from './rest/info/get-user-fills';
+export * from './rest/info/get-candle-snapshot';
+export * from './rest/info/get-spot-meta';
+export * from './rest/info/get-meta-and-asset-ctxs';
 
 export * from './rest/exchange/place-order';
 export * from './rest/exchange/cancel-order';
