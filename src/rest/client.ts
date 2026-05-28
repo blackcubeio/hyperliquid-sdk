@@ -1,8 +1,8 @@
 import { getConfig } from '../common/config';
 import { EXCHANGE_PATH, INFO_PATH } from '../common/constants';
 import type { JsonValue } from '../common/types';
-import { signL1Action } from './signing';
-import type { Signature } from './types';
+import { signL1Action, signUserSignedAction } from './signing';
+import type { Eip712Types, Signature } from './types';
 
 export class HyperliquidApiError extends Error {
   constructor(
@@ -36,6 +36,33 @@ export function postExchange<TResponse>(body: Record<string, unknown>): Promise<
       body: JSON.stringify(body),
     })
     .then((response) => parseExchange<TResponse>(response));
+}
+
+/**
+ * Signe une action user-signed (transferts, retraits, approbation d'agent…) puis la poste
+ * sur `/exchange`. `hyperliquidChain` est injecté depuis le réseau configuré.
+ */
+export function userSignedRequest<TResponse>(args: {
+  action: Record<string, unknown> & { signatureChainId: `0x${string}` };
+  types: Eip712Types;
+  nonce: number;
+}): Promise<TResponse> {
+  const config = getConfig();
+  if (config.privateKey === undefined) {
+    throw new Error(
+      'Clé privée absente ; passe privateKey à init() pour signer les actions /exchange',
+    );
+  }
+  const action = {
+    ...args.action,
+    hyperliquidChain: config.isTestnet ? 'Testnet' : 'Mainnet',
+  };
+  const signature = signUserSignedAction({
+    privateKey: config.privateKey,
+    action,
+    types: args.types,
+  });
+  return postExchange<TResponse>({ action, nonce: args.nonce, signature });
 }
 
 export interface ExchangeOptions {
