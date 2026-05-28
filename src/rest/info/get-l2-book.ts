@@ -18,11 +18,14 @@ export interface L2Book {
  * Carnet d'ordres niveau 2 d'une coin.
  * @param params `coin` (nom perp, ou `PURR/USDC` / `@{index}` pour le spot), agrégation optionnelle.
  */
-export function getL2Book(params: {
-  coin: string;
-  nSigFigs?: number;
-  mantissa?: number;
-}): Promise<L2Book> {
+export function getL2Book(
+  params: {
+    coin: string;
+    nSigFigs?: number;
+    mantissa?: number;
+  },
+  label?: string,
+): Promise<L2Book> {
   const body: Record<string, JsonValue> = { type: 'l2Book', coin: params.coin };
   if (params.nSigFigs !== undefined) {
     body.nSigFigs = params.nSigFigs;
@@ -30,5 +33,5 @@ export function getL2Book(params: {
   if (params.mantissa !== undefined) {
     body.mantissa = params.mantissa;
   }
-  return infoRequest<L2Book>(body);
+  return infoRequest<L2Book>(body, label);
 }

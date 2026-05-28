@@ -57,9 +57,9 @@ export function buildOrderWire(order: OrderParams): OrderWire {
 /** Place un ordre limite (signé, `/exchange`). */
 export function createLimitOrder<TResponse = unknown>(
   order: OrderParams,
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction([order]), account);
+  return exchangeL1Action<TResponse>(buildOrderAction([order]), label);
 }
 
 /**
@@ -68,15 +68,15 @@ export function createLimitOrder<TResponse = unknown>(
  */
 export function createMarketOrder<TResponse = unknown>(
   order: Omit<OrderParams, 'tif'>,
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction([{ ...order, tif: 'Ioc' }]), account);
+  return exchangeL1Action<TResponse>(buildOrderAction([{ ...order, tif: 'Ioc' }]), label);
 }
 
 /** Place plusieurs ordres dans une seule action atomique (signé, `/exchange`). */
 export function placeOrders<TResponse = unknown>(
   orders: OrderParams[],
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction(orders), account);
+  return exchangeL1Action<TResponse>(buildOrderAction(orders), label);
 }

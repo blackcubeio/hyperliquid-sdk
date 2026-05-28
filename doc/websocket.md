@@ -4,20 +4,23 @@
 dispatch by `channel`, ping/pong heartbeat, reconnection with re-subscription, and request/response
 via `post` (including **signed trading actions**).
 
+The network and the signer are chosen by a `label` passed at construction. Without a label the
+socket connects to **mainnet** (read-only); signed actions then require a labelled client.
+
 ```ts
 import { init, WsClient, assetIndex, getMeta } from '@blackcube/hyperliquid-sdk';
 
-init({ network: 'testnet', signers: { [account]: { privateKey } } });
+init({ signers: { tester: { privateKey, publicKey, network: 'testnet' } } });
 
-const ws = new WsClient();
+const ws = new WsClient({ label: 'tester' }); // connects to the label's network (testnet)
 await ws.connect();
 
 // Streams
 const unsubscribe = ws.subscribeAllMids((data) => console.log(data));
 ws.subscribeL2Book({ coin: 'BTC' }, (book) => console.log(book));
 
-// Signed trading over WS
-const asset = assetIndex((await getMeta()).universe, 'BTC');
+// Signed trading over WS — signs with the client's label
+const asset = assetIndex((await getMeta(undefined, 'tester')).universe, 'BTC');
 await ws.createLimitOrder({ asset, isBuy: true, price: 30000, size: 0.001, tif: 'Alo' });
 
 unsubscribe();
@@ -43,14 +46,15 @@ Generic: `subscribe(subscription, handler)` for any subscription `{ type, … }`
 
 ## Signed trading actions (🔑)
 
-Mirror the REST exchange verbs, sent over the socket via `post` (`{ type: 'action', payload }`):
+Mirror the REST exchange verbs, sent over the socket via `post` (`{ type: 'action', payload }`).
+They sign with the client's `label` (set at construction) — no per-call signer argument:
 
 | Method | action |
 |---|---|
-| `createLimitOrder(order, account?)` | `order` |
-| `createMarketOrder(order, account?)` | `order` (IOC) |
-| `cancelOrder({ asset, oid }, account?)` | `cancel` |
-| `editOrder({ oid, order }, account?)` | `modify` |
+| `createLimitOrder(order)` | `order` |
+| `createMarketOrder(order)` | `order` (IOC) |
+| `cancelOrder({ asset, oid })` | `cancel` |
+| `editOrder({ oid, order })` | `modify` |
 
 ## Request/response & lifecycle
 

@@ -19,8 +19,13 @@ const ready =
 describe.skipIf(!ready)('intégration testnet réel', () => {
   beforeAll(() => {
     init({
-      network: 'testnet',
-      signers: { [account as string]: { privateKey: privateKey as `0x${string}` } },
+      signers: {
+        trader: {
+          privateKey: privateKey as `0x${string}`,
+          publicKey: account as `0x${string}`,
+          network: 'testnet',
+        },
+      },
     });
   });
   afterAll(() => {
@@ -28,23 +33,26 @@ describe.skipIf(!ready)('intégration testnet réel', () => {
   });
 
   it('place un ordre ALO loin du marché puis l’annule par cloid', async () => {
-    const meta = await getMeta();
+    const meta = await getMeta(undefined, 'trader');
     const asset = assetIndex(meta.universe, 'BTC');
-    const mids = await getAllMids();
+    const mids = await getAllMids(undefined, 'trader');
     const price = Math.max(1, Math.round(Number(mids.BTC) * 0.5));
     const cloid = `0x${globalThis.crypto.randomUUID().replace(/-/g, '')}` as `0x${string}`;
 
-    const placed = await createLimitOrder<{ status: string }>({
-      asset,
-      isBuy: true,
-      price,
-      size: 0.001,
-      tif: 'Alo',
-      cloid,
-    });
+    const placed = await createLimitOrder<{ status: string }>(
+      {
+        asset,
+        isBuy: true,
+        price,
+        size: 0.001,
+        tif: 'Alo',
+        cloid,
+      },
+      'trader',
+    );
     expect(placed.status).toBe('ok');
 
-    const cancelled = await cancelOrdersByCloid<{ status: string }>([{ asset, cloid }]);
+    const cancelled = await cancelOrdersByCloid<{ status: string }>([{ asset, cloid }], 'trader');
     expect(cancelled.status).toBe('ok');
   }, 30_000);
 });

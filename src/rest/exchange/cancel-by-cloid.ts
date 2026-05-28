@@ -17,7 +17,7 @@ export function buildCancelByCloidAction(cancels: CancelByCloidParams[]): Record
 /** Annule un ou plusieurs ordres par client order ID (signé, `/exchange`). */
 export function cancelOrdersByCloid<TResponse = unknown>(
   cancels: CancelByCloidParams[],
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelByCloidAction(cancels), account);
+  return exchangeL1Action<TResponse>(buildCancelByCloidAction(cancels), label);
 }
