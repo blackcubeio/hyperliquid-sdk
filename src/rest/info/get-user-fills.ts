@@ -19,13 +19,16 @@ export interface UserFill {
 }
 
 /** Historique d'exécutions (fills) d'un compte. */
-export function getUserFills(params: {
-  user: `0x${string}`;
-  aggregateByTime?: boolean;
-}): Promise<UserFill[]> {
+export function getUserFills(
+  params: {
+    user: `0x${string}`;
+    aggregateByTime?: boolean;
+  },
+  label?: string,
+): Promise<UserFill[]> {
   const body: Record<string, JsonValue> = { type: 'userFills', user: params.user };
   if (params.aggregateByTime !== undefined) {
     body.aggregateByTime = params.aggregateByTime;
   }
-  return infoRequest<UserFill[]>(body);
+  return infoRequest<UserFill[]>(body, label);
 }

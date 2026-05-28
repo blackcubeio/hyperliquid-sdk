@@ -13,13 +13,16 @@ export interface OpenOrder {
 }
 
 /** Ordres ouverts d'un compte. `user` = adresse réelle du compte (jamais l'agent wallet). */
-export function getOpenOrders(params: {
-  user: `0x${string}`;
-  dex?: string;
-}): Promise<OpenOrder[]> {
+export function getOpenOrders(
+  params: {
+    user: `0x${string}`;
+    dex?: string;
+  },
+  label?: string,
+): Promise<OpenOrder[]> {
   const body: Record<string, JsonValue> = { type: 'openOrders', user: params.user };
   if (params.dex !== undefined) {
     body.dex = params.dex;
   }
-  return infoRequest<OpenOrder[]>(body);
+  return infoRequest<OpenOrder[]>(body, label);
 }

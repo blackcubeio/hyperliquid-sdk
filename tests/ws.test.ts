@@ -5,7 +5,7 @@ import { WsClient } from '../src/ws/client';
 // WebSocket réel sur le mainnet (flux public, pas de wallet requis).
 describe('WebSocket (mainnet réel)', () => {
   beforeAll(() => {
-    init({ network: 'mainnet' });
+    init();
   });
 
   it('reçoit un message allMids', async () => {

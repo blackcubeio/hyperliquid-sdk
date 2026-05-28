@@ -1,6 +1,6 @@
 import { type WebSocketFactory, type WebSocketLike, getConfig } from '../common/config';
 import type { JsonObject, JsonValue } from '../common/types';
-import { resolveSigner } from '../rest/client';
+import { resolveReadNetwork, resolveSigner } from '../rest/client';
 import { type CancelParams, buildCancelAction } from '../rest/exchange/cancel-order';
 import { type ModifyParams, buildModifyAction } from '../rest/exchange/modify-order';
 import { type OrderParams, buildOrderAction } from '../rest/exchange/place-order';
@@ -10,6 +10,8 @@ export type StreamHandler = (data: JsonValue) => void;
 export type Unsubscribe = () => void;
 
 export interface WsClientOptions {
+  /** Label du signer (cf. init) : choisit le réseau du socket et signe les actions WS. */
+  label?: string;
   url?: string;
   webSocket?: WebSocketFactory;
   /** Intervalle du ping (ms). HL ferme les connexions inactives après ~60 s. Défaut 50 s. */
@@ -24,6 +26,8 @@ interface PendingPost {
 /**
  * Client WebSocket Hyperliquid : abonnements (`subscribe`/`unsubscribe`), dispatch par
  * `channel`, ping/pong, reconnexion avec ré-abonnement, et `post` (requête/réponse par id).
+ * Le réseau du socket vient du signer `label` (défaut mainnet) ; les actions signées WS
+ * réutilisent ce même signer.
  */
 export class WsClient {
   public onMessage: ((message: JsonValue) => void) | null = null;
@@ -31,6 +35,7 @@ export class WsClient {
   public onClose: (() => void) | null = null;
   public onReconnect: (() => void) | null = null;
 
+  private readonly label: string | undefined;
   private readonly url: string;
   private readonly createSocket: WebSocketFactory;
   private readonly heartbeatIntervalMs: number;
@@ -44,7 +49,8 @@ export class WsClient {
 
   constructor(options: WsClientOptions = {}) {
     const config = getConfig();
-    this.url = options.url ?? config.wsUrl;
+    this.label = options.label;
+    this.url = options.url ?? config.wsUrls[resolveReadNetwork(options.label)];
     this.createSocket = options.webSocket ?? config.webSocket;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 50_000;
   }
@@ -148,19 +154,17 @@ export class WsClient {
     });
   }
 
-  /** Signe une action L1 et la poste via le WebSocket (équivalent `/exchange` via `post`). */
+  /** Signe une action L1 (avec le signer du client) et la poste via le WebSocket. */
   private signedActionRequest<TResult extends JsonValue = JsonValue>(
     action: Record<string, unknown>,
-    account?: string,
   ): Promise<TResult> {
-    const config = getConfig();
-    const signer = resolveSigner(account);
+    const signer = resolveSigner(this.label);
     const nonce = Date.now();
     const signature = signL1Action({
       privateKey: signer.privateKey,
       action,
       nonce,
-      isTestnet: config.isTestnet,
+      isTestnet: signer.network === 'testnet',
       vaultAddress: signer.vaultAddress,
     });
     const payload: Record<string, unknown> = { action, nonce, signature };
@@ -172,30 +176,24 @@ export class WsClient {
 
   public createLimitOrder<TResult extends JsonValue = JsonValue>(
     order: OrderParams,
-    account?: string,
   ): Promise<TResult> {
-    return this.signedActionRequest<TResult>(buildOrderAction([order]), account);
+    return this.signedActionRequest<TResult>(buildOrderAction([order]));
   }
 
   public createMarketOrder<TResult extends JsonValue = JsonValue>(
     order: Omit<OrderParams, 'tif'>,
-    account?: string,
   ): Promise<TResult> {
-    return this.signedActionRequest<TResult>(buildOrderAction([{ ...order, tif: 'Ioc' }]), account);
+    return this.signedActionRequest<TResult>(buildOrderAction([{ ...order, tif: 'Ioc' }]));
   }
 
   public cancelOrder<TResult extends JsonValue = JsonValue>(
     cancel: CancelParams,
-    account?: string,
   ): Promise<TResult> {
-    return this.signedActionRequest<TResult>(buildCancelAction([cancel]), account);
+    return this.signedActionRequest<TResult>(buildCancelAction([cancel]));
   }
 
-  public editOrder<TResult extends JsonValue = JsonValue>(
-    params: ModifyParams,
-    account?: string,
-  ): Promise<TResult> {
-    return this.signedActionRequest<TResult>(buildModifyAction(params), account);
+  public editOrder<TResult extends JsonValue = JsonValue>(params: ModifyParams): Promise<TResult> {
+    return this.signedActionRequest<TResult>(buildModifyAction(params));
   }
 
   public startHeartbeat(intervalMs: number = this.heartbeatIntervalMs): void {
