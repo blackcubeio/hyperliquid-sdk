@@ -1,5 +1,10 @@
 import { type WebSocketFactory, type WebSocketLike, getConfig } from '../common/config';
 import type { JsonObject, JsonValue } from '../common/types';
+import { resolveSigner } from '../rest/client';
+import { type CancelParams, buildCancelAction } from '../rest/exchange/cancel-order';
+import { type ModifyParams, buildModifyAction } from '../rest/exchange/modify-order';
+import { type OrderParams, buildOrderAction } from '../rest/exchange/place-order';
+import { signL1Action } from '../rest/signing';
 
 export type StreamHandler = (data: JsonValue) => void;
 export type Unsubscribe = () => void;
@@ -133,12 +138,64 @@ export class WsClient {
   }
 
   /** Requête/réponse via `post` (id numérique). `request` = `{ type: 'info'|'action', payload }`. */
-  public post<TResult extends JsonValue = JsonValue>(request: JsonObject): Promise<TResult> {
+  public post<TResult extends JsonValue = JsonValue>(
+    request: Record<string, unknown>,
+  ): Promise<TResult> {
     const id = ++this.postId;
     return new Promise<TResult>((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (value: JsonValue) => void, reject });
       this.send({ method: 'post', id, request });
     });
+  }
+
+  /** Signe une action L1 et la poste via le WebSocket (équivalent `/exchange` via `post`). */
+  private signedActionRequest<TResult extends JsonValue = JsonValue>(
+    action: Record<string, unknown>,
+    account?: string,
+  ): Promise<TResult> {
+    const config = getConfig();
+    const signer = resolveSigner(account);
+    const nonce = Date.now();
+    const signature = signL1Action({
+      privateKey: signer.privateKey,
+      action,
+      nonce,
+      isTestnet: config.isTestnet,
+      vaultAddress: signer.vaultAddress,
+    });
+    const payload: Record<string, unknown> = { action, nonce, signature };
+    if (signer.vaultAddress !== undefined) {
+      payload.vaultAddress = signer.vaultAddress;
+    }
+    return this.post<TResult>({ type: 'action', payload });
+  }
+
+  public createLimitOrder<TResult extends JsonValue = JsonValue>(
+    order: OrderParams,
+    account?: string,
+  ): Promise<TResult> {
+    return this.signedActionRequest<TResult>(buildOrderAction([order]), account);
+  }
+
+  public createMarketOrder<TResult extends JsonValue = JsonValue>(
+    order: Omit<OrderParams, 'tif'>,
+    account?: string,
+  ): Promise<TResult> {
+    return this.signedActionRequest<TResult>(buildOrderAction([{ ...order, tif: 'Ioc' }]), account);
+  }
+
+  public cancelOrder<TResult extends JsonValue = JsonValue>(
+    cancel: CancelParams,
+    account?: string,
+  ): Promise<TResult> {
+    return this.signedActionRequest<TResult>(buildCancelAction([cancel]), account);
+  }
+
+  public editOrder<TResult extends JsonValue = JsonValue>(
+    params: ModifyParams,
+    account?: string,
+  ): Promise<TResult> {
+    return this.signedActionRequest<TResult>(buildModifyAction(params), account);
   }
 
   public startHeartbeat(intervalMs: number = this.heartbeatIntervalMs): void {
@@ -153,7 +210,7 @@ export class WsClient {
     }
   }
 
-  private send(payload: JsonObject): void {
+  private send(payload: Record<string, unknown>): void {
     if (this.socket === null) {
       throw new Error("WebSocket non connecté ; appelle connect() d'abord");
     }

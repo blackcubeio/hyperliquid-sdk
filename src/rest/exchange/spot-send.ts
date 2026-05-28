@@ -31,11 +31,15 @@ export function buildSpotSendAction(params: SpotSendParams, time: number) {
 }
 
 /** Transfert d'un token spot vers un autre compte (user-signed). */
-export function spotSend<TResponse = unknown>(params: SpotSendParams): Promise<TResponse> {
+export function spotSend<TResponse = unknown>(
+  params: SpotSendParams,
+  account?: string,
+): Promise<TResponse> {
   const time = params.time ?? Date.now();
   return userSignedRequest<TResponse>({
     action: buildSpotSendAction(params, time),
     types: SPOT_SEND_TYPES,
     nonce: time,
+    account,
   });
 }

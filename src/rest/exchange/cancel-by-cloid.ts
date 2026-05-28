@@ -1,4 +1,4 @@
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 
 export interface CancelByCloidParams {
   asset: number;
@@ -17,7 +17,7 @@ export function buildCancelByCloidAction(cancels: CancelByCloidParams[]): Record
 /** Annule un ou plusieurs ordres par client order ID (signé, `/exchange`). */
 export function cancelOrdersByCloid<TResponse = unknown>(
   cancels: CancelByCloidParams[],
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelByCloidAction(cancels), options);
+  return exchangeL1Action<TResponse>(buildCancelByCloidAction(cancels), account);
 }

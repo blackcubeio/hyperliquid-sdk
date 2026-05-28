@@ -29,11 +29,15 @@ export function buildUsdSendAction(params: UsdSendParams, time: number) {
 }
 
 /** Transfert USDC vers un autre compte Hyperliquid (user-signed). */
-export function usdSend<TResponse = unknown>(params: UsdSendParams): Promise<TResponse> {
+export function usdSend<TResponse = unknown>(
+  params: UsdSendParams,
+  account?: string,
+): Promise<TResponse> {
   const time = params.time ?? Date.now();
   return userSignedRequest<TResponse>({
     action: buildUsdSendAction(params, time),
     types: USD_SEND_TYPES,
     nonce: time,
+    account,
   });
 }

@@ -1,4 +1,4 @@
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 
 export interface UpdateLeverageParams {
   asset: number;
@@ -20,7 +20,7 @@ export function buildUpdateLeverageAction(params: UpdateLeverageParams): Record<
 /** Met à jour le levier d'un actif (signé, `/exchange`). */
 export function updateLeverage<TResponse = unknown>(
   params: UpdateLeverageParams,
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateLeverageAction(params), options);
+  return exchangeL1Action<TResponse>(buildUpdateLeverageAction(params), account);
 }

@@ -1,4 +1,4 @@
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 
 export interface CancelParams {
   /** Asset ID entier. */
@@ -15,10 +15,18 @@ export function buildCancelAction(cancels: CancelParams[]): Record<string, unkno
   };
 }
 
-/** Annule un ou plusieurs ordres par `oid` (signé, `/exchange`). */
+/** Annule un ordre par `oid` (signé, `/exchange`). */
+export function cancelOrder<TResponse = unknown>(
+  cancel: CancelParams,
+  account?: string,
+): Promise<TResponse> {
+  return exchangeL1Action<TResponse>(buildCancelAction([cancel]), account);
+}
+
+/** Annule plusieurs ordres par `oid` dans une seule action (signé, `/exchange`). */
 export function cancelOrders<TResponse = unknown>(
   cancels: CancelParams[],
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelAction(cancels), options);
+  return exchangeL1Action<TResponse>(buildCancelAction(cancels), account);
 }

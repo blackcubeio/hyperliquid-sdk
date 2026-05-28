@@ -28,11 +28,15 @@ export function buildWithdrawAction(params: WithdrawParams, time: number) {
 }
 
 /** Retrait d'USDC vers Arbitrum (user-signed). */
-export function withdraw<TResponse = unknown>(params: WithdrawParams): Promise<TResponse> {
+export function withdraw<TResponse = unknown>(
+  params: WithdrawParams,
+  account?: string,
+): Promise<TResponse> {
   const time = params.time ?? Date.now();
   return userSignedRequest<TResponse>({
     action: buildWithdrawAction(params, time),
     types: WITHDRAW_TYPES,
     nonce: time,
+    account,
   });
 }

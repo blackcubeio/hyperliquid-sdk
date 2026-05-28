@@ -1,4 +1,4 @@
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 
 export interface ScheduleCancelParams {
   /** Horodatage (ms) de l'annulation programmée (dead-man's switch). Omis/null = désactive. */
@@ -19,7 +19,7 @@ export function buildScheduleCancelAction(
 /** Programme (ou désactive) l'annulation automatique de tous les ordres (signé, `/exchange`). */
 export function scheduleCancel<TResponse = unknown>(
   params: ScheduleCancelParams = {},
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildScheduleCancelAction(params), options);
+  return exchangeL1Action<TResponse>(buildScheduleCancelAction(params), account);
 }

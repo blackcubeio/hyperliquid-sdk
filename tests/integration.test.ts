@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { init, resetConfig } from '../src/common/config';
 import { assetIndex } from '../src/common/utils';
 import { cancelOrdersByCloid } from '../src/rest/exchange/cancel-by-cloid';
-import { placeOrder } from '../src/rest/exchange/place-order';
+import { createLimitOrder } from '../src/rest/exchange/place-order';
 import { getAllMids } from '../src/rest/info/get-all-mids';
 import { getMeta } from '../src/rest/info/get-meta';
 import { readEnv } from './_env';
@@ -18,7 +18,10 @@ const ready =
 
 describe.skipIf(!ready)('intégration testnet réel', () => {
   beforeAll(() => {
-    init({ network: 'testnet', privateKey: privateKey as `0x${string}` });
+    init({
+      network: 'testnet',
+      signers: { [account as string]: { privateKey: privateKey as `0x${string}` } },
+    });
   });
   afterAll(() => {
     resetConfig();
@@ -31,7 +34,7 @@ describe.skipIf(!ready)('intégration testnet réel', () => {
     const price = Math.max(1, Math.round(Number(mids.BTC) * 0.5));
     const cloid = `0x${globalThis.crypto.randomUUID().replace(/-/g, '')}` as `0x${string}`;
 
-    const placed = await placeOrder<{ status: string }>({
+    const placed = await createLimitOrder<{ status: string }>({
       asset,
       isBuy: true,
       price,
