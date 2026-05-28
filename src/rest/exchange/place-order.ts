@@ -16,7 +16,7 @@ export interface OrderParams {
   cloid?: `0x${string}`;
 }
 
-interface OrderWire {
+export interface OrderWire {
   a: number;
   b: boolean;
   p: string;
@@ -33,12 +33,13 @@ interface OrderWire {
 export function buildOrderAction(orders: OrderParams[], grouping = 'na'): Record<string, unknown> {
   return {
     type: 'order',
-    orders: orders.map((order) => orderToWire(order)),
+    orders: orders.map((order) => buildOrderWire(order)),
     grouping,
   };
 }
 
-function orderToWire(order: OrderParams): OrderWire {
+/** Convertit un ordre en wire (clés courtes a/b/p/s/r/t/c). Réutilisé par `modify`. */
+export function buildOrderWire(order: OrderParams): OrderWire {
   const wire: OrderWire = {
     a: order.asset,
     b: order.isBuy,
