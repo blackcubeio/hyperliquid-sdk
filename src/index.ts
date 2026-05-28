@@ -18,3 +18,5 @@ export * from './rest/exchange/usd-send';
 export * from './rest/exchange/withdraw';
 export * from './rest/exchange/approve-agent';
 export * from './rest/exchange/spot-send';
+
+export * from './ws/client';
