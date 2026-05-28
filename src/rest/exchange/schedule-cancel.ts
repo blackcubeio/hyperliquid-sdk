@@ -19,7 +19,7 @@ export function buildScheduleCancelAction(
 /** Programme (ou désactive) l'annulation automatique de tous les ordres (signé, `/exchange`). */
 export function scheduleCancel<TResponse = unknown>(
   params: ScheduleCancelParams = {},
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildScheduleCancelAction(params), account);
+  return exchangeL1Action<TResponse>(buildScheduleCancelAction(params), label);
 }

@@ -25,6 +25,6 @@ export interface SpotMeta {
 }
 
 /** Métadonnées du marché spot (tokens + paires). L'asset ID spot d'une paire = `10000 + index`. */
-export function getSpotMeta(): Promise<SpotMeta> {
-  return infoRequest<SpotMeta>({ type: 'spotMeta' });
+export function getSpotMeta(label?: string): Promise<SpotMeta> {
+  return infoRequest<SpotMeta>({ type: 'spotMeta' }, label);
 }

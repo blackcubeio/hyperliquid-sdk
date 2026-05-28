@@ -28,15 +28,15 @@ export function buildBatchModifyAction(modifies: ModifyParams[]): Record<string,
 /** Modifie un ordre existant (signé, `/exchange`). */
 export function editOrder<TResponse = unknown>(
   params: ModifyParams,
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildModifyAction(params), account);
+  return exchangeL1Action<TResponse>(buildModifyAction(params), label);
 }
 
 /** Modifie plusieurs ordres dans une seule action (signé, `/exchange`). */
 export function batchModifyOrders<TResponse = unknown>(
   modifies: ModifyParams[],
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildBatchModifyAction(modifies), account);
+  return exchangeL1Action<TResponse>(buildBatchModifyAction(modifies), label);
 }

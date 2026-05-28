@@ -1,7 +1,5 @@
 import { REST_URL, TESTNET_REST_URL, TESTNET_WS_URL, WS_URL } from './constants';
-import type { Signer } from './types';
-
-export type Network = 'mainnet' | 'testnet';
+import type { Network, Signer } from './types';
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -18,31 +16,27 @@ export interface WebSocketLike {
 export type WebSocketFactory = (url: string) => WebSocketLike;
 
 export interface InitOptions {
-  network?: Network;
-  restUrl?: string;
-  wsUrl?: string;
+  /** Signers indexés par label (ex. `trader`, `tester`). Chaque signer porte son réseau. */
+  signers?: Record<string, Signer>;
   fetch?: FetchLike;
   webSocket?: WebSocketFactory;
-  /** Signataires indexés par adresse de compte (master/sub). Les appels signés référencent un compte. */
-  signers?: Record<string, Signer>;
+  /** Override des URLs REST par réseau. */
+  restUrls?: Partial<Record<Network, string>>;
+  /** Override des URLs WS par réseau. */
+  wsUrls?: Partial<Record<Network, string>>;
 }
 
 export interface HyperliquidConfig {
-  restUrl: string;
-  wsUrl: string;
-  isTestnet: boolean;
+  signers: Record<string, Signer>;
   fetch: FetchLike;
   webSocket: WebSocketFactory;
-  signers: Record<string, Signer>;
+  restUrls: Record<Network, string>;
+  wsUrls: Record<Network, string>;
 }
 
 let config: HyperliquidConfig | null = null;
 
 export function init(options: InitOptions = {}): void {
-  const network = options.network ?? 'mainnet';
-  const isTestnet = network === 'testnet';
-  const restUrl = options.restUrl ?? (isTestnet ? TESTNET_REST_URL : REST_URL);
-  const wsUrl = options.wsUrl ?? (isTestnet ? TESTNET_WS_URL : WS_URL);
   const fetchImpl =
     options.fetch ??
     (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : undefined);
@@ -54,12 +48,17 @@ export function init(options: InitOptions = {}): void {
     throw new Error('No WebSocket implementation available; pass options.webSocket to init()');
   }
   config = {
-    restUrl,
-    wsUrl,
-    isTestnet,
+    signers: options.signers ?? {},
     fetch: fetchImpl,
     webSocket,
-    signers: options.signers ?? {},
+    restUrls: {
+      mainnet: options.restUrls?.mainnet ?? REST_URL,
+      testnet: options.restUrls?.testnet ?? TESTNET_REST_URL,
+    },
+    wsUrls: {
+      mainnet: options.wsUrls?.mainnet ?? WS_URL,
+      testnet: options.wsUrls?.testnet ?? TESTNET_WS_URL,
+    },
   };
 }
 

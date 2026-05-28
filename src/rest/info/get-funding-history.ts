@@ -9,11 +9,14 @@ export interface FundingHistoryEntry {
 }
 
 /** Historique des taux de funding d'une coin sur une fenêtre temporelle. */
-export function getFundingHistory(params: {
-  coin: string;
-  startTime: number;
-  endTime?: number;
-}): Promise<FundingHistoryEntry[]> {
+export function getFundingHistory(
+  params: {
+    coin: string;
+    startTime: number;
+    endTime?: number;
+  },
+  label?: string,
+): Promise<FundingHistoryEntry[]> {
   const body: Record<string, JsonValue> = {
     type: 'fundingHistory',
     coin: params.coin,
@@ -22,5 +25,5 @@ export function getFundingHistory(params: {
   if (params.endTime !== undefined) {
     body.endTime = params.endTime;
   }
-  return infoRequest<FundingHistoryEntry[]>(body);
+  return infoRequest<FundingHistoryEntry[]>(body, label);
 }

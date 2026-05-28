@@ -7,7 +7,7 @@ import { getMeta } from '../src/rest/info/get-meta';
 // Lectures /info réelles sur le mainnet (non signées, publiques — pas de wallet requis).
 describe('info (mainnet réel)', () => {
   beforeAll(() => {
-    init({ network: 'mainnet' });
+    init();
   });
 
   it('getAllMids renvoie un prix pour BTC', async () => {

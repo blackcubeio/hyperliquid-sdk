@@ -20,7 +20,7 @@ export function buildUpdateLeverageAction(params: UpdateLeverageParams): Record<
 /** Met à jour le levier d'un actif (signé, `/exchange`). */
 export function updateLeverage<TResponse = unknown>(
   params: UpdateLeverageParams,
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateLeverageAction(params), account);
+  return exchangeL1Action<TResponse>(buildUpdateLeverageAction(params), label);
 }
