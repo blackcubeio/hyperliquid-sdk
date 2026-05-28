@@ -7,9 +7,9 @@ import { getAllMids } from '../src/rest/info/get-all-mids';
 import { getMeta } from '../src/rest/info/get-meta';
 import { readEnv } from './_env';
 
-// Cycle d'écriture réel sur testnet. Skippé tant que .env n'a pas de clé d'agent valide.
-const account = readEnv('HYPERLIQUID_ACCOUNT_ADDRESS');
-const privateKey = readEnv('HYPERLIQUID_AGENT_PRIVATE_KEY');
+// Cycle d'écriture réel sur testnet. Skippé tant que .env n'a pas de clé valide.
+const account = readEnv('EVM_PUBLIC_KEY');
+const privateKey = readEnv('EVM_PRIVATE_KEY');
 const ready =
   account !== undefined &&
   privateKey !== undefined &&
