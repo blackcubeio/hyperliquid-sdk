@@ -31,13 +31,13 @@ export function buildApproveAgentAction(params: ApproveAgentParams, nonce: numbe
 /** Autorise une API/agent wallet à signer pour le compte (user-signed). */
 export function approveAgent<TResponse = unknown>(
   params: ApproveAgentParams,
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
   const nonce = params.nonce ?? Date.now();
   return userSignedRequest<TResponse>({
     action: buildApproveAgentAction(params, nonce),
     types: APPROVE_AGENT_TYPES,
     nonce,
-    account,
+    label,
   });
 }

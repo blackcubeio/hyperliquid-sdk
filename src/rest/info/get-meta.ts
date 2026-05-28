@@ -18,10 +18,10 @@ export interface Meta {
  * Métadonnées des perpetuals (univers d'actifs : nom, `szDecimals`, levier max…).
  * L'index dans `universe` est l'asset ID utilisé pour les ordres (BTC = 0 sur mainnet).
  */
-export function getMeta(dex?: string): Promise<Meta> {
+export function getMeta(dex?: string, label?: string): Promise<Meta> {
   const body: Record<string, JsonValue> = { type: 'meta' };
   if (dex !== undefined) {
     body.dex = dex;
   }
-  return infoRequest<Meta>(body);
+  return infoRequest<Meta>(body, label);
 }

@@ -13,7 +13,7 @@ Organised like the [Hyperliquid API docs](https://hyperliquid.gitbook.io/hyperli
 - [Subscriptions & trading](./websocket.md) — real-time streams and signed actions over `post`
 
 ### Signing
-- [Signing](./signing.md) — EIP-712 + msgpack (L1) and EIP-712 typed data (user-signed), signer registry, API/agent wallets
+- [Signing](./signing.md) — EIP-712 + msgpack (L1) and EIP-712 typed data (user-signed), signer registry (network per signer), API/agent wallets
 
 ## Installation
 
@@ -30,20 +30,24 @@ The SDK is initialised **once**; the whole API inherits the configuration.
 ```ts
 import { init } from '@blackcube/hyperliquid-sdk';
 
-init();                                                               // mainnet
-init({ network: 'testnet' });                                         // testnet (reads only)
-init({ network: 'testnet', signers: { [account]: { privateKey } } }); // + signer registry
+init();                                                          // reads only, mainnet fallback
+init({
+  signers: {
+    trader: { privateKey, publicKey, network: 'mainnet' },       // a mainnet signer
+    tester: { privateKey, publicKey, network: 'testnet' },       // a testnet signer
+  },
+});
 ```
 
 | Option | Type | Default |
 |---|---|---|
-| `network` | `'mainnet' \| 'testnet'` | `'mainnet'` |
-| `restUrl` / `wsUrl` | `string` | per `network` |
+| `signers` | `Record<label, Signer>` | — (required for writes) |
 | `fetch` | `FetchLike` | `globalThis.fetch` |
 | `webSocket` | `WebSocketFactory` | `globalThis.WebSocket` |
-| `signers` | `Record<account, Signer>` | — (required for writes) |
+| `restUrls` / `wsUrls` | `Record<Network, string>` | per network |
 
-Calling the API before `init()` throws `Hyperliquid SDK not initialized`. `resetConfig()` resets it.
+Each `Signer` carries its own `network`, so mainnet and testnet coexist in one process. Calling the
+API before `init()` throws `Hyperliquid SDK not initialized`. `resetConfig()` resets it.
 
 ## Two endpoints
 
@@ -55,11 +59,17 @@ Hyperliquid exposes only two REST endpoints:
 The SDK wraps both: `infoRequest` for reads, `exchangeL1Action` / `userSignedRequest` for writes
 (used internally by the typed functions).
 
-## Multi-account
+## Labels, networks & read/write rules
 
-Register one signer per account address in `init({ signers })`, then reference an account by
-address on signed calls — `createLimitOrder(params, account)` — and on account subscriptions.
-With a single registered account the `account` argument is optional.
+Register one signer per **label** in `init({ signers })`; each signer carries its own `network`.
+Every call takes the label as a trailing argument:
+
+- **Reads** (`getAllMids`, `getMeta`, subscriptions…) — label is **optional**. No label → **mainnet**;
+  a label → that signer's network. `getAllMids(undefined, 'tester')`.
+- **Writes** (`createLimitOrder`, `usdSend`, `updateLeverage`…) — label is **mandatory** and throws if
+  omitted. It selects both the wallet and the network: `createLimitOrder(params, 'tester')`.
+
+Because the network lives on the signer, mainnet and testnet are usable at the same time.
 
 ## Asset IDs
 
@@ -74,4 +84,4 @@ Orders and cancels use an integer `asset`:
 - **Public API in camelCase**; the `exchange` wire uses Hyperliquid's short keys internally.
 - **Amounts/prices are decimal strings** on the wire (`floatToWire` formats numbers).
 - Errors throw `HyperliquidApiError` (`status`, `message`).
-- Writes reference a registered [account](./signing.md) (registry in `init`, `account` per call).
+- Writes reference a registered signer by [label](./signing.md) (registry in `init`, label per call).

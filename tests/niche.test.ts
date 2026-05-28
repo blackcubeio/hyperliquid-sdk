@@ -31,7 +31,7 @@ describe('actions de niche (formes)', () => {
 
 describe('lectures de niche (mainnet réel)', () => {
   beforeAll(() => {
-    init({ network: 'mainnet' });
+    init();
   });
 
   it('getFundingHistory renvoie un historique BTC', async () => {

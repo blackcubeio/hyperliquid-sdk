@@ -8,7 +8,7 @@ import { getSpotMeta } from '../src/rest/info/get-spot-meta';
 // Lectures /info réelles sur le mainnet (publiques sauf openOrders, testé sur adresse zéro).
 describe('info — lectures supplémentaires (mainnet réel)', () => {
   beforeAll(() => {
-    init({ network: 'mainnet' });
+    init();
   });
 
   it('getSpotMeta renvoie tokens et paires', async () => {

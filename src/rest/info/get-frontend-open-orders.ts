@@ -20,13 +20,16 @@ export interface FrontendOrder {
 }
 
 /** Ordres ouverts avec les infos d'affichage (type d'ordre, triggers, TP/SL…). */
-export function getFrontendOpenOrders(params: {
-  user: `0x${string}`;
-  dex?: string;
-}): Promise<FrontendOrder[]> {
+export function getFrontendOpenOrders(
+  params: {
+    user: `0x${string}`;
+    dex?: string;
+  },
+  label?: string,
+): Promise<FrontendOrder[]> {
   const body: Record<string, JsonValue> = { type: 'frontendOpenOrders', user: params.user };
   if (params.dex !== undefined) {
     body.dex = params.dex;
   }
-  return infoRequest<FrontendOrder[]>(body);
+  return infoRequest<FrontendOrder[]>(body, label);
 }

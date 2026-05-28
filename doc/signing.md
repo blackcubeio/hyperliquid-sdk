@@ -33,32 +33,37 @@ import { signUserSignedAction, USD_SEND_TYPES } from '@blackcube/hyperliquid-sdk
 const sig = signUserSignedAction({ privateKey, action, types: USD_SEND_TYPES });
 ```
 
-## Signer registry & accounts
+## Signer registry, labels & networks
 
-Signers are registered **per account address** in `init({ signers })`, then signed calls
-reference an account by address:
+Signers are registered **per label** in `init({ signers })`. A signer is self-contained and
+**carries its own network** — that's what lets mainnet and testnet coexist in one process:
 
 ```ts
 interface Signer {
-  privateKey: `0x${string}`;     // API/agent wallet key used to sign
-  vaultAddress?: `0x${string}`;  // vault / sub-account included in L1 actions
+  privateKey: `0x${string}`;       // API/agent wallet key used to sign
+  publicKey: `0x${string}`;        // the account address (used for reads & as L1 source)
+  network: 'mainnet' | 'testnet';  // the chain this signer acts on
+  vaultAddress?: `0x${string}`;    // vault / sub-account included in L1 actions
 }
 
 init({
-  network: 'testnet',
   signers: {
-    '0x1171…(account address)': { privateKey: AGENT_KEY },
-    '0xabcd…(another account)': { privateKey: OTHER_KEY, vaultAddress: '0x…' },
+    trader: { privateKey: TRADER_KEY, publicKey: '0x1171…', network: 'mainnet' },
+    tester: { privateKey: TESTER_KEY, publicKey: '0xabcd…', network: 'testnet' },
   },
 });
 
-createLimitOrder(params, '0x1171…');   // 2nd arg = the registry key (account address)
+createLimitOrder(params, 'tester');   // 2nd arg = the label; network comes from the signer
 ```
 
-The **registry key is the account** (the wallet the action is for, used for reads); the **value
-is the signing material**. `resolveSigner(account?)` resolves it — with a single registered
-account the `account` argument is optional; an unknown/missing account throws
-`Aucun signataire enregistré pour …`.
+Two resolvers back the read/write rules:
+
+- `resolveSigner(label)` — for **writes**. The label is **mandatory**: a missing label throws
+  `Un signer (label) est obligatoire pour cette action signée`, an unknown one throws
+  `Aucun signer enregistré sous "…"`. It returns the key, the public address, the network and the
+  optional vault — the network drives the L1 `source` (`a`/`b`) and the wire `hyperliquidChain`.
+- `resolveReadNetwork(label?)` — for **reads**. The label is **optional**: no label → `mainnet`,
+  a label → that signer's network; an unknown label still throws.
 
 > **API / agent wallets.** A master account can approve API wallets (`approveAgent`) to sign on its
 > behalf. The API wallet only **signs** — to read account data you must pass the **master/sub

@@ -23,7 +23,7 @@ export function buildUpdateIsolatedMarginAction(
 /** Ajuste la marge isolée d'une position (signé, `/exchange`). */
 export function updateIsolatedMargin<TResponse = unknown>(
   params: UpdateIsolatedMarginParams,
-  account?: string,
+  label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateIsolatedMarginAction(params), account);
+  return exchangeL1Action<TResponse>(buildUpdateIsolatedMarginAction(params), label);
 }
