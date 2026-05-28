@@ -16,9 +16,14 @@ export * from './rest/info/get-user-fills';
 export * from './rest/info/get-candle-snapshot';
 export * from './rest/info/get-spot-meta';
 export * from './rest/info/get-meta-and-asset-ctxs';
+export * from './rest/info/get-order-status';
+export * from './rest/info/get-frontend-open-orders';
+export * from './rest/info/get-user-fills-by-time';
+export * from './rest/info/get-funding-history';
 
 export * from './rest/exchange/place-order';
 export * from './rest/exchange/cancel-order';
+export * from './rest/exchange/cancel-by-cloid';
 export * from './rest/exchange/modify-order';
 export * from './rest/exchange/update-leverage';
 export * from './rest/exchange/update-isolated-margin';
@@ -27,5 +32,6 @@ export * from './rest/exchange/usd-send';
 export * from './rest/exchange/withdraw';
 export * from './rest/exchange/approve-agent';
 export * from './rest/exchange/spot-send';
+export * from './rest/exchange/usd-class-transfer';
 
 export * from './ws/client';
