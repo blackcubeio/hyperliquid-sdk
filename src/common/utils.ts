@@ -18,3 +18,15 @@ export function floatToWire(x: number): string {
 export function toWireValue(value: number | string): string {
   return typeof value === 'string' ? value : floatToWire(value);
 }
+
+/**
+ * Asset ID (perp) d'une coin = son index dans `meta.universe`. Lève si introuvable.
+ * Pour le spot, l'asset ID est `10000 + index` de la paire dans `spotMeta.universe`.
+ */
+export function assetIndex(universe: readonly { name: string }[], coin: string): number {
+  const index = universe.findIndex((asset) => asset.name === coin);
+  if (index === -1) {
+    throw new Error(`Coin introuvable dans l'univers : ${coin}`);
+  }
+  return index;
+}
