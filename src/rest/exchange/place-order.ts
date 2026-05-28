@@ -1,5 +1,5 @@
 import { toWireValue } from '../../common/utils';
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 
 export type Tif = 'Gtc' | 'Ioc' | 'Alo';
 
@@ -38,7 +38,7 @@ export function buildOrderAction(orders: OrderParams[], grouping = 'na'): Record
   };
 }
 
-/** Convertit un ordre en wire (clés courtes a/b/p/s/r/t/c). Réutilisé par `modify`. */
+/** Convertit un ordre en wire (clés courtes a/b/p/s/r/t/c). Réutilisé par `editOrder`. */
 export function buildOrderWire(order: OrderParams): OrderWire {
   const wire: OrderWire = {
     a: order.asset,
@@ -55,17 +55,28 @@ export function buildOrderWire(order: OrderParams): OrderWire {
 }
 
 /** Place un ordre limite (signé, `/exchange`). */
-export function placeOrder<TResponse = unknown>(
+export function createLimitOrder<TResponse = unknown>(
   order: OrderParams,
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction([order]), options);
+  return exchangeL1Action<TResponse>(buildOrderAction([order]), account);
 }
 
-/** Place plusieurs ordres dans une seule action atomique. */
+/**
+ * Place un ordre « marché » : un IOC au `price` fourni (Hyperliquid n'a pas de type marché
+ * natif ; `price` borne le slippage accepté).
+ */
+export function createMarketOrder<TResponse = unknown>(
+  order: Omit<OrderParams, 'tif'>,
+  account?: string,
+): Promise<TResponse> {
+  return exchangeL1Action<TResponse>(buildOrderAction([{ ...order, tif: 'Ioc' }]), account);
+}
+
+/** Place plusieurs ordres dans une seule action atomique (signé, `/exchange`). */
 export function placeOrders<TResponse = unknown>(
   orders: OrderParams[],
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction(orders), options);
+  return exchangeL1Action<TResponse>(buildOrderAction(orders), account);
 }

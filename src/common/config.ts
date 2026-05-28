@@ -1,4 +1,5 @@
 import { REST_URL, TESTNET_REST_URL, TESTNET_WS_URL, WS_URL } from './constants';
+import type { Signer } from './types';
 
 export type Network = 'mainnet' | 'testnet';
 
@@ -22,10 +23,8 @@ export interface InitOptions {
   wsUrl?: string;
   fetch?: FetchLike;
   webSocket?: WebSocketFactory;
-  /** Clé privée de l'API/agent wallet (0x…) pour signer les actions `/exchange`. */
-  privateKey?: `0x${string}`;
-  /** Adresse de vault / sub-account (0x…) incluse dans les actions L1 signées. */
-  vaultAddress?: `0x${string}`;
+  /** Signataires indexés par adresse de compte (master/sub). Les appels signés référencent un compte. */
+  signers?: Record<string, Signer>;
 }
 
 export interface HyperliquidConfig {
@@ -34,8 +33,7 @@ export interface HyperliquidConfig {
   isTestnet: boolean;
   fetch: FetchLike;
   webSocket: WebSocketFactory;
-  privateKey?: `0x${string}`;
-  vaultAddress?: `0x${string}`;
+  signers: Record<string, Signer>;
 }
 
 let config: HyperliquidConfig | null = null;
@@ -61,8 +59,7 @@ export function init(options: InitOptions = {}): void {
     isTestnet,
     fetch: fetchImpl,
     webSocket,
-    privateKey: options.privateKey,
-    vaultAddress: options.vaultAddress,
+    signers: options.signers ?? {},
   };
 }
 

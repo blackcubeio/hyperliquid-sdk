@@ -1,4 +1,4 @@
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 import { type OrderParams, buildOrderWire } from './place-order';
 
 export interface ModifyParams {
@@ -26,17 +26,17 @@ export function buildBatchModifyAction(modifies: ModifyParams[]): Record<string,
 }
 
 /** Modifie un ordre existant (signé, `/exchange`). */
-export function modifyOrder<TResponse = unknown>(
+export function editOrder<TResponse = unknown>(
   params: ModifyParams,
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildModifyAction(params), options);
+  return exchangeL1Action<TResponse>(buildModifyAction(params), account);
 }
 
-/** Modifie plusieurs ordres dans une seule action. */
+/** Modifie plusieurs ordres dans une seule action (signé, `/exchange`). */
 export function batchModifyOrders<TResponse = unknown>(
   modifies: ModifyParams[],
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildBatchModifyAction(modifies), options);
+  return exchangeL1Action<TResponse>(buildBatchModifyAction(modifies), account);
 }

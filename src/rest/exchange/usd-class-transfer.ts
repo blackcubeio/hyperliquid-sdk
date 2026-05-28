@@ -31,11 +31,13 @@ export function buildUsdClassTransferAction(params: UsdClassTransferParams, nonc
 /** Transfert d'USDC entre le wallet perp et le wallet spot (user-signed). */
 export function usdClassTransfer<TResponse = unknown>(
   params: UsdClassTransferParams,
+  account?: string,
 ): Promise<TResponse> {
   const nonce = params.nonce ?? Date.now();
   return userSignedRequest<TResponse>({
     action: buildUsdClassTransferAction(params, nonce),
     types: USD_CLASS_TRANSFER_TYPES,
     nonce,
+    account,
   });
 }

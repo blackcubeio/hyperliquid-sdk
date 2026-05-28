@@ -1,4 +1,4 @@
-import { type ExchangeOptions, exchangeL1Action } from '../client';
+import { exchangeL1Action } from '../client';
 
 export interface UpdateIsolatedMarginParams {
   asset: number;
@@ -23,7 +23,7 @@ export function buildUpdateIsolatedMarginAction(
 /** Ajuste la marge isolée d'une position (signé, `/exchange`). */
 export function updateIsolatedMargin<TResponse = unknown>(
   params: UpdateIsolatedMarginParams,
-  options?: ExchangeOptions,
+  account?: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateIsolatedMarginAction(params), options);
+  return exchangeL1Action<TResponse>(buildUpdateIsolatedMarginAction(params), account);
 }
