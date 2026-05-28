@@ -18,7 +18,7 @@ the WebSocket API, and EIP-712 request signing.
 - ✅ **WebSocket** — typed subscriptions and signed trading actions over `post`
 - ✅ **Signing** — EIP-712 + msgpack (L1 actions) and EIP-712 typed data (user-signed), secp256k1, API/agent wallets
 - ✅ Typed end-to-end, ESM + CJS + `.d.ts`, Node.js and browser-safe (crypto via [`@noble`](https://paulmillr.com/noble/))
-- ✅ Mainnet & testnet out of the box
+- ✅ **Mainnet & testnet at the same time** — the network is carried per signer, not globally
 
 ## Install
 
@@ -43,23 +43,30 @@ import {
   WsClient,
 } from '@blackcube/hyperliquid-sdk';
 
-// Initialise once — the whole API inherits this config.
-// Register one signer per account address; reference an account on signed calls.
+// Initialise once. Register one signer per label; each signer carries its own
+// network, so mainnet and testnet live side by side in the same process.
 init({
-  network: 'testnet',
-  signers: { [process.env.EVM_PUBLIC_KEY]: { privateKey: process.env.EVM_PRIVATE_KEY } },
+  signers: {
+    trader: { privateKey: '0x…', publicKey: '0x…', network: 'mainnet' },
+    tester: { privateKey: '0x…', publicKey: '0x…', network: 'testnet' },
+  },
 });
 
-// Public read
-const mids = await getAllMids();
+// Public read — label is OPTIONAL. No label → mainnet. A label → that signer's network.
+const mids = await getAllMids();                 // mainnet
+const testMids = await getAllMids(undefined, 'tester'); // testnet
 
-// Signed write — `account` is optional when a single signer is registered
-const meta = await getMeta();
+// Signed write — label is MANDATORY (it picks the wallet *and* the network).
+// Omitting it throws, so you can never sign on the wrong chain by accident.
+const meta = await getMeta(undefined, 'tester');
 const asset = assetIndex(meta.universe, 'BTC'); // perp asset ID = index in meta.universe
-const result = await createLimitOrder({ asset, isBuy: true, price: 30000, size: 0.001, tif: 'Alo' });
+const result = await createLimitOrder(
+  { asset, isBuy: true, price: 30000, size: 0.001, tif: 'Alo' },
+  'tester',
+);
 
-// WebSocket: stream + signed actions
-const ws = new WsClient();
+// WebSocket: stream + signed actions. Pass the label at construction; reads default to mainnet.
+const ws = new WsClient({ label: 'tester' });
 await ws.connect();
 ws.subscribeAllMids((data) => console.log(data));
 await ws.createLimitOrder({ asset, isBuy: true, price: 30000, size: 0.001, tif: 'Alo' });
@@ -71,15 +78,30 @@ await ws.createLimitOrder({ asset, isBuy: true, price: 30000, size: 0.001, tif: 
 
 | Option | Type | Default |
 |---|---|---|
-| `network` | `'mainnet' \| 'testnet'` | `'mainnet'` |
-| `restUrl` / `wsUrl` | `string` | per `network` |
+| `signers` | `Record<label, Signer>` | — (required for signed writes) |
 | `fetch` | `FetchLike` | `globalThis.fetch` |
 | `webSocket` | `WebSocketFactory` | `globalThis.WebSocket` |
-| `signers` | `Record<account, Signer>` | — (required for signed writes) |
+| `restUrls` / `wsUrls` | `Record<Network, string>` | per network |
 
-Signed writes reference a registered account: register signers keyed by account address in
-`init({ signers })` (`Signer = { privateKey, vaultAddress? }`), then pass the `account` per call
-(optional when a single account is registered). Multi-account ready. See [doc/signing](./doc/signing.md).
+A `Signer` is self-contained and **carries its own network**:
+
+```ts
+type Signer = {
+  privateKey: `0x${string}`;
+  publicKey: `0x${string}`;
+  network: 'mainnet' | 'testnet';
+  vaultAddress?: `0x${string}`; // optional, for vault / sub-account trading
+};
+```
+
+Register signers under arbitrary **labels** (`trader`, `tester`, …), then pass the label per call:
+
+- **Read methods** (don't touch funds): label is **optional**. No label → **mainnet** fallback; a
+  label → that signer's network. Unknown label throws.
+- **Write methods** (orders, transfers, leverage…): label is **mandatory**. Omitting it throws — the
+  label is what selects both the wallet *and* the network, so there is no implicit default.
+
+This makes mainnet and testnet usable simultaneously in one process. See [doc/signing](./doc/signing.md).
 
 ## API documentation
 

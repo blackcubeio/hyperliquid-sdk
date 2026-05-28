@@ -22,12 +22,15 @@ export interface Candle {
  * Bougies OHLC. Les paramètres sont imbriqués sous `req` côté wire.
  * @param params `interval` ex. "1m", "1h" ; `startTime`/`endTime` en ms.
  */
-export function getCandleSnapshot(params: {
-  coin: string;
-  interval: string;
-  startTime: number;
-  endTime?: number;
-}): Promise<Candle[]> {
+export function getCandleSnapshot(
+  params: {
+    coin: string;
+    interval: string;
+    startTime: number;
+    endTime?: number;
+  },
+  label?: string,
+): Promise<Candle[]> {
   const req: Record<string, JsonValue> = {
     coin: params.coin,
     interval: params.interval,
@@ -36,5 +39,5 @@ export function getCandleSnapshot(params: {
   if (params.endTime !== undefined) {
     req.endTime = params.endTime;
   }
-  return infoRequest<Candle[]>({ type: 'candleSnapshot', req });
+  return infoRequest<Candle[]>({ type: 'candleSnapshot', req }, label);
 }

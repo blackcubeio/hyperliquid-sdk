@@ -16,6 +16,6 @@ export interface AssetCtx {
 /** `[meta, contextes]` : l'univers + les contextes (mark price, funding, OI…) par actif, alignés par index. */
 export type MetaAndAssetCtxs = [Meta, AssetCtx[]];
 
-export function getMetaAndAssetCtxs(): Promise<MetaAndAssetCtxs> {
-  return infoRequest<MetaAndAssetCtxs>({ type: 'metaAndAssetCtxs' });
+export function getMetaAndAssetCtxs(label?: string): Promise<MetaAndAssetCtxs> {
+  return infoRequest<MetaAndAssetCtxs>({ type: 'metaAndAssetCtxs' }, label);
 }
