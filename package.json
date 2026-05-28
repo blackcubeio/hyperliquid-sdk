@@ -1,0 +1,68 @@
+{
+  "name": "@blackcube/hyperliquid-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Hyperliquid exchange (perpetuals & spot DEX): REST info/exchange, WebSocket, EIP-712 signing",
+  "license": "BSD-3-Clause",
+  "author": "Blackcube (https://blackcube.io)",
+  "homepage": "https://github.com/blackcubeio/hyperliquid-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blackcubeio/hyperliquid-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/blackcubeio/hyperliquid-sdk/issues"
+  },
+  "keywords": [
+    "hyperliquid",
+    "evm",
+    "arbitrum",
+    "perp",
+    "perpetuals",
+    "spot",
+    "dex",
+    "trading",
+    "exchange",
+    "sdk",
+    "eip712",
+    "websocket"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "files": ["dist", "doc", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "prepublishOnly": "pnpm run lint && pnpm run typecheck && pnpm run build"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.0.0",
+    "@noble/curves": "^1.7.0",
+    "@noble/hashes": "^1.6.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
