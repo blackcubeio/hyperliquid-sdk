@@ -146,6 +146,23 @@ export interface Price {
 }
 
 /**
+ * Solde d'un actif au **format unifié Blackcube** (cœur identique entre SDK).
+ * `available`/`usdValue` `null` si non fournis. `xtras` porte le natif hors cœur, omis si vide.
+ */
+export interface Balance {
+  /** Actif (ex. `USDC`, `PURR`). */
+  asset: string;
+  /** Solde total (chaîne décimale). */
+  total: string;
+  /** Disponible (chaîne décimale) ; `null` si non fourni. */
+  available: string | null;
+  /** Valeur en USD ; `null` si non fournie. */
+  usdValue: string | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
+/**
  * Point d'historique de **taux de funding** au format unifié (cœur identique entre SDK).
  * `xtras` porte le natif hors cœur (premium HL…), omis si vide.
  */
