@@ -7,6 +7,7 @@ export * from './rest/types';
 export * from './rest/signing';
 export * from './rest/client';
 export * from './rest/get-pairs';
+export * from './rest/get-candles';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
