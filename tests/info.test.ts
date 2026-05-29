@@ -20,6 +20,7 @@ describe('info (mainnet réel)', () => {
     const meta = await getMeta();
     expect(Array.isArray(meta.universe)).toBe(true);
     expect(meta.universe[0]?.name).toBe('BTC');
+    expect(meta.universe[0]?.kind).toBe('perp');
   });
 
   it('getL2Book renvoie des bids et asks pour BTC', async () => {

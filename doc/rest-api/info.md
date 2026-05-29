@@ -25,7 +25,9 @@ const state = await getClearinghouseState({ user: '0x…' }, 'tester');
 | `getL2Book({ coin, nSigFigs?, mantissa? }, label?)` | `l2Book` | `{ coin, time, levels: [bids, asks] }` |
 | `getCandleSnapshot({ coin, interval, startTime, endTime? }, label?)` | `candleSnapshot` | `Candle[]` (params nested under `req`) |
 | `getFundingHistory({ coin, startTime, endTime? }, label?)` | `fundingHistory` | `FundingHistoryEntry[]` |
-| `getSpotMeta(label?)` | `spotMeta` | `{ tokens, universe }` — spot tokens & pairs |
+| `getMetaSpot(label?)` | `spotMeta` | `{ tokens, universe }` — spot tokens & pairs |
+| `getMetaAndAssetCtxsSpot(label?)` | `spotMetaAndAssetCtxs` | `[SpotMeta, SpotAssetCtx[]]` — spot meta + mark/mid/volumes per pair |
+| `getClearinghouseStateSpot({ user }, label?)` | `spotClearinghouseState` | `{ balances }` — spot balances per token |
 
 ## Account & orders
 
