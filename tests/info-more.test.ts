@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { init } from '../src/common/config';
+import { getOpenOrders } from '../src/rest/get-open-orders';
 import { getPairs } from '../src/rest/get-pairs';
 import { getCandleSnapshot, marketKindFromCoin } from '../src/rest/info/get-candle-snapshot';
 import { getClearinghouseStateSpot } from '../src/rest/info/get-clearinghouse-state-spot';
 import { getMetaAndAssetCtxs } from '../src/rest/info/get-meta-and-asset-ctxs';
 import { getMetaAndAssetCtxsSpot } from '../src/rest/info/get-meta-and-asset-ctxs-spot';
 import { getMetaSpot } from '../src/rest/info/get-meta-spot';
-import { getOpenOrders } from '../src/rest/info/get-open-orders';
 
 // Lectures /info réelles sur le mainnet (publiques sauf openOrders, testé sur adresse zéro).
 describe('info — lectures supplémentaires (mainnet réel)', () => {

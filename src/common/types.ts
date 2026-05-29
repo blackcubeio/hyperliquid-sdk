@@ -172,6 +172,53 @@ export interface Position {
   xtras?: Record<string, unknown>;
 }
 
+/** Côté d'un ordre/trade : achat ou vente. */
+export type Side = 'buy' | 'sell';
+
+/**
+ * Ordre au **format unifié Blackcube** (cœur identique entre SDK). Type-pivot partagé
+ * par les lectures (`getOpenOrders`/`getOrderHistory`) et le trading (`placeOrder`…).
+ * `side`/`type`/`status`/`tif` sont des littéraux unifiés (sources natives dans `xtras`).
+ */
+export interface Order {
+  /** Paire/symbole (= `Pair.name`). */
+  name: string;
+  /** Type de marché (`perp`/`spot`). */
+  kind: MarketKind;
+  /** ID d'ordre exchange. */
+  id: string;
+  /** Client order id ; `null` si absent. */
+  clientId: string | null;
+  /** Sens. */
+  side: Side;
+  /** Type d'ordre unifié. */
+  type:
+    | 'limit'
+    | 'market'
+    | 'stop'
+    | 'stopMarket'
+    | 'takeProfit'
+    | 'takeProfitMarket'
+    | 'trailingStop'
+    | 'other';
+  /** Prix limite ; `null` si non applicable (marché). */
+  price: string | null;
+  /** Quantité demandée (chaîne décimale). */
+  size: string;
+  /** Quantité exécutée. */
+  filled: string;
+  /** Statut unifié. */
+  status: 'open' | 'partiallyFilled' | 'filled' | 'canceled' | 'rejected' | 'expired' | 'other';
+  /** Time-in-force unifié ; `null` si non fourni. */
+  tif: 'gtc' | 'ioc' | 'fok' | 'alo' | null;
+  /** Reduce-only ; `null` si non fourni. */
+  reduceOnly: boolean | null;
+  /** Timestamp (ms). */
+  time: number;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
 /**
  * Solde d'un actif au **format unifié Blackcube** (cœur identique entre SDK).
  * `available`/`usdValue` `null` si non fournis. `xtras` porte le natif hors cœur, omis si vide.

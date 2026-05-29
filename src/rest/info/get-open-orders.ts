@@ -1,6 +1,4 @@
-import type { JsonValue } from '../../common/types';
-import { infoRequest } from '../client';
-
+/** Ordre ouvert natif HL (`openOrders`) — type consommé par `getOpenOrders` unifié. */
 export interface OpenOrder {
   coin: string;
   limitPx: string;
@@ -10,19 +8,4 @@ export interface OpenOrder {
   timestamp: number;
   origSz?: string;
   cloid?: string;
-}
-
-/** Ordres ouverts d'un compte. `user` = adresse réelle du compte (jamais l'agent wallet). */
-export function getOpenOrders(
-  params: {
-    user: `0x${string}`;
-    dex?: string;
-  },
-  label?: string,
-): Promise<OpenOrder[]> {
-  const body: Record<string, JsonValue> = { type: 'openOrders', user: params.user };
-  if (params.dex !== undefined) {
-    body.dex = params.dex;
-  }
-  return infoRequest<OpenOrder[]>(body, label);
 }
