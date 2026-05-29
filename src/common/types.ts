@@ -86,6 +86,36 @@ export interface Candle {
   xtras?: Record<string, unknown>;
 }
 
+/** Niveau de carnet au **format unifié** (prix + taille ; `n` = nb d'ordres, `null` si non fourni). */
+export interface OrderBookLevel {
+  /** Prix du niveau (chaîne décimale). */
+  price: string;
+  /** Taille cumulée au niveau (chaîne décimale). */
+  size: string;
+  /** Nombre d'ordres au niveau ; `null` si l'exchange ne le fournit pas. */
+  n: number | null;
+}
+
+/**
+ * Carnet d'ordres au **format unifié Blackcube** (cœur identique entre les SDK).
+ * `bids` décroissants, `asks` croissants. `time` = timestamp ms (`null` si non fourni).
+ * `xtras` porte le natif hors cœur (rien jeté), omis si vide.
+ */
+export interface OrderBook {
+  /** Paire/symbole (= `Pair.name`). */
+  name: string;
+  /** Type de marché (`perp`/`spot`). */
+  kind: MarketKind;
+  /** Niveaux acheteurs (prix décroissant). */
+  bids: OrderBookLevel[];
+  /** Niveaux vendeurs (prix croissant). */
+  asks: OrderBookLevel[];
+  /** Timestamp du carnet (ms) ; `null` si non fourni. */
+  time: number | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
 export interface Signer {
   /** Clé privée de l'API/agent wallet (0x…) qui signe pour ce compte. */
   privateKey: `0x${string}`;
