@@ -20,7 +20,8 @@ export interface PositionCumFunding {
   sinceChange: string;
 }
 
-export interface Position {
+/** Position perp native HL (utilisée par `getClearinghouseState`, spécifique). */
+export interface PerpPosition {
   coin: string;
   szi: string;
   entryPx?: string;
@@ -36,7 +37,7 @@ export interface Position {
 
 export interface AssetPosition {
   type: string;
-  position: Position;
+  position: PerpPosition;
 }
 
 export interface ClearinghouseState {

@@ -146,6 +146,33 @@ export interface Price {
 }
 
 /**
+ * Position ouverte au **format unifié Blackcube** (cœur identique entre SDK).
+ * `side`/`size`/`leverage` dérivés (source native dans `xtras`). Champs nullables si non fournis.
+ */
+export interface Position {
+  /** Paire/symbole (= `Pair.name`). */
+  name: string;
+  /** Sens : `long`/`short` (`null` si plate). */
+  side: 'long' | 'short' | null;
+  /** Taille absolue (chaîne décimale, sans signe). */
+  size: string;
+  /** Prix d'entrée ; `null` si non fourni. */
+  entryPrice: string | null;
+  /** Mark price ; `null` si non fourni. */
+  markPrice: string | null;
+  /** PnL non réalisé ; `null` si non fourni. */
+  unrealizedPnl: string | null;
+  /** Levier ; `null` si non fourni. */
+  leverage: number | null;
+  /** Prix de liquidation ; `null` si non fourni. */
+  liquidationPrice: string | null;
+  /** Marge engagée ; `null` si non fournie. */
+  margin: string | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
+/**
  * Solde d'un actif au **format unifié Blackcube** (cœur identique entre SDK).
  * `available`/`usdValue` `null` si non fournis. `xtras` porte le natif hors cœur, omis si vide.
  */
