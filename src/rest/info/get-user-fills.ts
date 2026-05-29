@@ -1,6 +1,4 @@
-import type { JsonValue } from '../../common/types';
-import { infoRequest } from '../client';
-
+/** Fill natif HL (`userFills`) — type consommé par `getUserTrades` unifié et `getUserFillsByTime`. */
 export interface UserFill {
   coin: string;
   px: string;
@@ -16,19 +14,4 @@ export interface UserFill {
   fee: string;
   tid: number;
   feeToken: string;
-}
-
-/** Historique d'exécutions (fills) d'un compte. */
-export function getUserFills(
-  params: {
-    user: `0x${string}`;
-    aggregateByTime?: boolean;
-  },
-  label?: string,
-): Promise<UserFill[]> {
-  const body: Record<string, JsonValue> = { type: 'userFills', user: params.user };
-  if (params.aggregateByTime !== undefined) {
-    body.aggregateByTime = params.aggregateByTime;
-  }
-  return infoRequest<UserFill[]>(body, label);
 }
