@@ -6,6 +6,9 @@ export interface JsonObject {
 
 export type Network = 'mainnet' | 'testnet';
 
+/** Type de marché d'une paire : perpetual ou spot. */
+export type MarketKind = 'perp' | 'spot';
+
 export interface Signer {
   /** Clé privée de l'API/agent wallet (0x…) qui signe pour ce compte. */
   privateKey: `0x${string}`;

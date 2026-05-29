@@ -1,5 +1,5 @@
 import { infoRequest } from '../client';
-import type { Meta } from './get-meta';
+import { type AssetMeta, type Meta, tagPerpMeta } from './get-meta';
 
 export interface AssetCtx {
   funding: string;
@@ -16,6 +16,10 @@ export interface AssetCtx {
 /** `[meta, contextes]` : l'univers + les contextes (mark price, funding, OI…) par actif, alignés par index. */
 export type MetaAndAssetCtxs = [Meta, AssetCtx[]];
 
+type MetaWire = { universe: Omit<AssetMeta, 'kind'>[]; marginTables?: unknown[] };
+
 export function getMetaAndAssetCtxs(label?: string): Promise<MetaAndAssetCtxs> {
-  return infoRequest<MetaAndAssetCtxs>({ type: 'metaAndAssetCtxs' }, label);
+  return infoRequest<[MetaWire, AssetCtx[]]>({ type: 'metaAndAssetCtxs' }, label).then(
+    ([meta, ctxs]) => [tagPerpMeta(meta), ctxs],
+  );
 }

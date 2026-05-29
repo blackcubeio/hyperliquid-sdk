@@ -1,0 +1,43 @@
+import type { MarketKind } from '../../common/types';
+import { infoRequest } from '../client';
+
+export interface SpotToken {
+  name: string;
+  szDecimals: number;
+  weiDecimals: number;
+  index: number;
+  tokenId: string;
+  isCanonical: boolean;
+  evmContract: string | null;
+  fullName: string | null;
+}
+
+export interface SpotPair {
+  name: string;
+  /** `[baseTokenIndex, quoteTokenIndex]`. */
+  tokens: [number, number];
+  index: number;
+  isCanonical: boolean;
+  /** Toujours `'spot'` ici — distingue des perpetuals lors d'une fusion. */
+  kind: MarketKind;
+}
+
+export interface SpotMeta {
+  tokens: SpotToken[];
+  universe: SpotPair[];
+}
+
+type SpotMetaWire = { tokens: SpotToken[]; universe: Omit<SpotPair, 'kind'>[] };
+
+/** Tague chaque paire de l'univers spot avec `kind: 'spot'`. */
+export function tagSpotMeta(meta: SpotMetaWire): SpotMeta {
+  return { ...meta, universe: meta.universe.map((pair) => ({ ...pair, kind: 'spot' as const })) };
+}
+
+/**
+ * Métadonnées du marché spot (tokens + paires). L'asset ID spot d'une paire = `10000 + index`.
+ * Chaque paire porte `kind: 'spot'`.
+ */
+export function getMetaSpot(label?: string): Promise<SpotMeta> {
+  return infoRequest<SpotMetaWire>({ type: 'spotMeta' }, label).then(tagSpotMeta);
+}

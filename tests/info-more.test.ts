@@ -1,9 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { init } from '../src/common/config';
-import { getCandleSnapshot } from '../src/rest/info/get-candle-snapshot';
+import { getCandleSnapshot, marketKindFromCoin } from '../src/rest/info/get-candle-snapshot';
+import { getClearinghouseStateSpot } from '../src/rest/info/get-clearinghouse-state-spot';
 import { getMetaAndAssetCtxs } from '../src/rest/info/get-meta-and-asset-ctxs';
+import { getMetaAndAssetCtxsSpot } from '../src/rest/info/get-meta-and-asset-ctxs-spot';
+import { getMetaSpot } from '../src/rest/info/get-meta-spot';
 import { getOpenOrders } from '../src/rest/info/get-open-orders';
-import { getSpotMeta } from '../src/rest/info/get-spot-meta';
 
 // Lectures /info réelles sur le mainnet (publiques sauf openOrders, testé sur adresse zéro).
 describe('info — lectures supplémentaires (mainnet réel)', () => {
@@ -11,10 +13,26 @@ describe('info — lectures supplémentaires (mainnet réel)', () => {
     init();
   });
 
-  it('getSpotMeta renvoie tokens et paires', async () => {
-    const spot = await getSpotMeta();
+  it('getMetaSpot renvoie tokens et paires taguées spot', async () => {
+    const spot = await getMetaSpot();
     expect(spot.tokens.length).toBeGreaterThan(0);
     expect(spot.universe.length).toBeGreaterThan(0);
+    expect(spot.universe[0]?.kind).toBe('spot');
+  });
+
+  it('getMetaAndAssetCtxsSpot renvoie meta spot et contextes', async () => {
+    const [meta, ctxs] = await getMetaAndAssetCtxsSpot();
+    expect(meta.universe.length).toBeGreaterThan(0);
+    expect(ctxs.length).toBeGreaterThan(0);
+    expect(typeof ctxs[0]?.markPx).toBe('string');
+    expect(typeof ctxs[0]?.coin).toBe('string');
+  });
+
+  it('getClearinghouseStateSpot renvoie des balances (adresse zéro)', async () => {
+    const state = await getClearinghouseStateSpot({
+      user: '0x0000000000000000000000000000000000000000',
+    });
+    expect(Array.isArray(state.balances)).toBe(true);
   });
 
   it('getMetaAndAssetCtxs aligne meta et contextes', async () => {
@@ -24,7 +42,14 @@ describe('info — lectures supplémentaires (mainnet réel)', () => {
     expect(typeof ctxs[0]?.markPx).toBe('string');
   });
 
-  it('getCandleSnapshot renvoie des bougies BTC', async () => {
+  it('marketKindFromCoin distingue perp et spot', () => {
+    expect(marketKindFromCoin('BTC')).toBe('perp');
+    expect(marketKindFromCoin('HYPE')).toBe('perp');
+    expect(marketKindFromCoin('PURR/USDC')).toBe('spot');
+    expect(marketKindFromCoin('@1')).toBe('spot');
+  });
+
+  it('getCandleSnapshot renvoie des bougies BTC taguées perp', async () => {
     const candles = await getCandleSnapshot({
       coin: 'BTC',
       interval: '1h',
@@ -32,6 +57,17 @@ describe('info — lectures supplémentaires (mainnet réel)', () => {
     });
     expect(candles.length).toBeGreaterThan(0);
     expect(candles[0]?.s).toBe('BTC');
+    expect(candles[0]?.kind).toBe('perp');
+  });
+
+  it('getCandleSnapshot sur une paire spot tague spot', async () => {
+    const candles = await getCandleSnapshot({
+      coin: '@1',
+      interval: '1h',
+      startTime: Date.now() - 6 * 3600 * 1000,
+    });
+    expect(candles.length).toBeGreaterThan(0);
+    expect(candles[0]?.kind).toBe('spot');
   });
 
   it('getOpenOrders renvoie un tableau (adresse zéro)', async () => {

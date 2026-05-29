@@ -1,25 +1,47 @@
-import type { JsonValue } from '../../common/types';
+import type { JsonValue, MarketKind } from '../../common/types';
 import { infoRequest } from '../client';
 
+/**
+ * Bougie OHLCV au **format unifié Blackcube** (clés courtes, identiques entre les SDK
+ * hyperliquid/pacifica/aster). Prix et volume sont des **chaînes décimales**.
+ */
 export interface Candle {
-  /** Début (ms). */
+  /** Open time — début de la bougie (timestamp ms). */
   t: number;
-  /** Fin (ms). */
+  /** Close time — fin de la bougie (timestamp ms). */
   T: number;
-  /** Coin. */
+  /** Symbol — coin (perp) ou paire (spot, ex. `@1`, `PURR/USDC`). */
   s: string;
-  /** Intervalle. */
+  /** Interval — intervalle (ex. `1h`). */
   i: string;
+  /** Open — prix d'ouverture. */
   o: string;
+  /** Close — prix de clôture. */
   c: string;
+  /** High — plus haut. */
   h: string;
+  /** Low — plus bas. */
   l: string;
+  /** Volume — volume en actif de base. */
   v: string;
+  /** Number of trades — nombre de trades. */
   n: number;
+  /** Type de marché, déduit du `coin` (cf. {@link marketKindFromCoin}). */
+  kind: MarketKind;
 }
 
 /**
- * Bougies OHLC. Les paramètres sont imbriqués sous `req` côté wire.
+ * Déduit le type de marché d'un `coin` Hyperliquid : une paire **spot** est nommée
+ * `BASE/QUOTE` (ex. `PURR/USDC`) ou `@{index}` (ex. `@1`) ; tout le reste est un **perp**
+ * (ticker simple : `BTC`, `HYPE`…).
+ */
+export function marketKindFromCoin(coin: string): MarketKind {
+  return coin.includes('/') || /^@\d+$/.test(coin) ? 'spot' : 'perp';
+}
+
+/**
+ * Bougies OHLC. Les paramètres sont imbriqués sous `req` côté wire. Chaque bougie est taguée
+ * `kind` (déduit du `coin`, surchargeable via `params.kind`).
  * @param params `interval` ex. "1m", "1h" ; `startTime`/`endTime` en ms.
  */
 export function getCandleSnapshot(
@@ -28,6 +50,8 @@ export function getCandleSnapshot(
     interval: string;
     startTime: number;
     endTime?: number;
+    /** Force le `kind` ; par défaut déduit du `coin`. */
+    kind?: MarketKind;
   },
   label?: string,
 ): Promise<Candle[]> {
@@ -39,5 +63,8 @@ export function getCandleSnapshot(
   if (params.endTime !== undefined) {
     req.endTime = params.endTime;
   }
-  return infoRequest<Candle[]>({ type: 'candleSnapshot', req }, label);
+  const kind = params.kind ?? marketKindFromCoin(params.coin);
+  return infoRequest<Omit<Candle, 'kind'>[]>({ type: 'candleSnapshot', req }, label).then(
+    (candles) => candles.map((candle) => ({ ...candle, kind })),
+  );
 }
