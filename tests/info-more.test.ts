@@ -51,7 +51,7 @@ describe('info — lectures supplémentaires (mainnet réel)', () => {
     expect(btc?.quote).toBe('USDC');
     expect(typeof btc?.szDecimals).toBe('number');
     expect(typeof btc?.maxLeverage).toBe('number');
-    expect(typeof btc?.raw).toBe('object');
+    expect(typeof btc?.xtras).toBe('object');
     expect(pairs.some((p) => p.kind === 'spot')).toBe(true);
   });
 
