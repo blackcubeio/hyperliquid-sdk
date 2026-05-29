@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { init } from '../src/common/config';
+import { getPairs } from '../src/rest/get-pairs';
 import { getCandleSnapshot, marketKindFromCoin } from '../src/rest/info/get-candle-snapshot';
 import { getClearinghouseStateSpot } from '../src/rest/info/get-clearinghouse-state-spot';
 import { getMetaAndAssetCtxs } from '../src/rest/info/get-meta-and-asset-ctxs';
@@ -40,6 +41,18 @@ describe('info — lectures supplémentaires (mainnet réel)', () => {
     expect(meta.universe[0]?.name).toBe('BTC');
     expect(ctxs.length).toBe(meta.universe.length);
     expect(typeof ctxs[0]?.markPx).toBe('string');
+  });
+
+  it('getPairs renvoie le format unifié (perp + spot)', async () => {
+    const pairs = await getPairs();
+    expect(pairs.length).toBeGreaterThan(0);
+    const btc = pairs.find((p) => p.base === 'BTC' && p.kind === 'perp');
+    expect(btc?.name).toBe('BTC');
+    expect(btc?.quote).toBe('USDC');
+    expect(typeof btc?.szDecimals).toBe('number');
+    expect(typeof btc?.maxLeverage).toBe('number');
+    expect(typeof btc?.raw).toBe('object');
+    expect(pairs.some((p) => p.kind === 'spot')).toBe(true);
   });
 
   it('marketKindFromCoin distingue perp et spot', () => {
