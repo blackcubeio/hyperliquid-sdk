@@ -9,6 +9,7 @@ export * from './rest/client';
 export * from './rest/get-pairs';
 export * from './rest/get-candles';
 export * from './rest/get-order-book';
+export * from './rest/get-prices';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';

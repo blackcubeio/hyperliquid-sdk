@@ -116,6 +116,35 @@ export interface OrderBook {
   xtras?: Record<string, unknown>;
 }
 
+/**
+ * Snapshot de prix d'un marché au **format unifié Blackcube** (cœur identique entre les SDK).
+ * Chaque exchange remplit ce qu'il fournit ; le reste est `null`. `xtras` porte le hors-cœur.
+ */
+export interface Price {
+  /** Paire/symbole (= `Pair.name`). */
+  name: string;
+  /** Type de marché (`perp`/`spot`). */
+  kind: MarketKind;
+  /** Mark price ; `null` si non fourni. */
+  mark: string | null;
+  /** Oracle/index price ; `null` si non fourni. */
+  oracle: string | null;
+  /** Mid price ; `null` si non fourni. */
+  mid: string | null;
+  /** Funding rate courant ; `null` si non fourni. */
+  funding: string | null;
+  /** Open interest ; `null` si non fourni. */
+  openInterest: string | null;
+  /** Volume 24h (notionnel) ; `null` si non fourni. */
+  volume24h: string | null;
+  /** Prix de clôture de la veille ; `null` si non fourni. */
+  prevDayPrice: string | null;
+  /** Timestamp (ms) ; `null` si non fourni. */
+  time: number | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
 export interface Signer {
   /** Clé privée de l'API/agent wallet (0x…) qui signe pour ce compte. */
   privateKey: `0x${string}`;
