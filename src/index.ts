@@ -10,6 +10,7 @@ export * from './rest/get-pairs';
 export * from './rest/get-candles';
 export * from './rest/get-order-book';
 export * from './rest/get-prices';
+export * from './rest/get-funding-history';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
@@ -24,7 +25,6 @@ export * from './rest/info/get-clearinghouse-state-spot';
 export * from './rest/info/get-order-status';
 export * from './rest/info/get-frontend-open-orders';
 export * from './rest/info/get-user-fills-by-time';
-export * from './rest/info/get-funding-history';
 
 export * from './rest/exchange/place-order';
 export * from './rest/exchange/cancel-order';
