@@ -145,6 +145,21 @@ export interface Price {
   xtras?: Record<string, unknown>;
 }
 
+/**
+ * Point d'historique de **taux de funding** au format unifié (cœur identique entre SDK).
+ * `xtras` porte le natif hors cœur (premium HL…), omis si vide.
+ */
+export interface FundingRate {
+  /** Paire/symbole (= `Pair.name`). */
+  name: string;
+  /** Taux de funding (chaîne décimale). */
+  fundingRate: string;
+  /** Timestamp du funding (ms). */
+  time: number;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
 export interface Signer {
   /** Clé privée de l'API/agent wallet (0x…) qui signe pour ce compte. */
   privateKey: `0x${string}`;

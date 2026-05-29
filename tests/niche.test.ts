@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { init } from '../src/common/config';
 import { buildCancelByCloidAction } from '../src/rest/exchange/cancel-by-cloid';
 import { buildUsdClassTransferAction } from '../src/rest/exchange/usd-class-transfer';
+import { getFundingHistory } from '../src/rest/get-funding-history';
 import { getFrontendOpenOrders } from '../src/rest/info/get-frontend-open-orders';
-import { getFundingHistory } from '../src/rest/info/get-funding-history';
 import { getOrderStatus } from '../src/rest/info/get-order-status';
 
 const ZERO = '0x0000000000000000000000000000000000000000' as const;
@@ -36,11 +36,13 @@ describe('lectures de niche (mainnet réel)', () => {
 
   it('getFundingHistory renvoie un historique BTC', async () => {
     const history = await getFundingHistory({
-      coin: 'BTC',
+      name: 'BTC',
       startTime: Date.now() - 24 * 3600 * 1000,
     });
     expect(Array.isArray(history)).toBe(true);
-    expect(history[0]?.coin).toBe('BTC');
+    expect(history[0]?.name).toBe('BTC');
+    expect(typeof history[0]?.fundingRate).toBe('string');
+    expect(typeof history[0]?.xtras?.premium).toBe('string');
   });
 
   it('getOrderStatus renvoie un statut', async () => {
