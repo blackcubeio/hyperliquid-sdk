@@ -39,6 +39,47 @@ export interface Pair {
   raw: Record<string, unknown>;
 }
 
+/**
+ * Bougie OHLCV au **format unifié Blackcube** (clés courtes, cœur identique entre les SDK
+ * hyperliquid/pacifica/aster). Prix et volumes sont des **chaînes décimales**.
+ *
+ * Le **cœur** (`t…kind`) regroupe les champs vraiment communs aux 3 exchanges.
+ * `qv`/`tbbv`/`tbqv` sont nullables (renseignés par Aster, `null` chez HL/Pacifica).
+ * `xtras` porte le reste non modélisé : **rien n'est jeté**, `toNative(toCommon(x)) ≡ x`.
+ */
+export interface Candle {
+  /** Open time — début de la bougie (timestamp ms). */
+  t: number;
+  /** Close time — fin de la bougie (timestamp ms). */
+  T: number;
+  /** Symbol — coin (perp) ou paire (spot, ex. `@1`, `PURR/USDC`). */
+  s: string;
+  /** Interval — intervalle (ex. `1h`). */
+  i: string;
+  /** Open — prix d'ouverture. */
+  o: string;
+  /** Close — prix de clôture. */
+  c: string;
+  /** High — plus haut. */
+  h: string;
+  /** Low — plus bas. */
+  l: string;
+  /** Volume — volume en actif de base. */
+  v: string;
+  /** Number of trades — nombre de trades. */
+  n: number;
+  /** Type de marché (`perp`/`spot`). */
+  kind: MarketKind;
+  /** Quote volume — `null` si l'exchange ne le fournit pas (cas HL). */
+  qv: string | null;
+  /** Taker buy base volume — `null` si non fourni. */
+  tbbv: string | null;
+  /** Taker buy quote volume — `null` si non fourni. */
+  tbqv: string | null;
+  /** Reste des champs **non standard / non modélisés** (rien n'est jeté). HL : `{}`. */
+  xtras: Record<string, unknown>;
+}
+
 export interface Signer {
   /** Clé privée de l'API/agent wallet (0x…) qui signe pour ce compte. */
   privateKey: `0x${string}`;

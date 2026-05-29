@@ -1,34 +1,9 @@
-import type { JsonValue, MarketKind } from '../../common/types';
+import type { Candle, JsonValue, MarketKind } from '../../common/types';
 import { infoRequest } from '../client';
+import { CandleConverter, type CandleNative } from '../converters/candle';
 
-/**
- * Bougie OHLCV au **format unifié Blackcube** (clés courtes, identiques entre les SDK
- * hyperliquid/pacifica/aster). Prix et volume sont des **chaînes décimales**.
- */
-export interface Candle {
-  /** Open time — début de la bougie (timestamp ms). */
-  t: number;
-  /** Close time — fin de la bougie (timestamp ms). */
-  T: number;
-  /** Symbol — coin (perp) ou paire (spot, ex. `@1`, `PURR/USDC`). */
-  s: string;
-  /** Interval — intervalle (ex. `1h`). */
-  i: string;
-  /** Open — prix d'ouverture. */
-  o: string;
-  /** Close — prix de clôture. */
-  c: string;
-  /** High — plus haut. */
-  h: string;
-  /** Low — plus bas. */
-  l: string;
-  /** Volume — volume en actif de base. */
-  v: string;
-  /** Number of trades — nombre de trades. */
-  n: number;
-  /** Type de marché, déduit du `coin` (cf. {@link marketKindFromCoin}). */
-  kind: MarketKind;
-}
+// `Candle` (format unifié) vit dans common/types ; ré-export pour compat des imports existants.
+export type { Candle };
 
 /**
  * Déduit le type de marché d'un `coin` Hyperliquid : une paire **spot** est nommée
@@ -63,8 +38,8 @@ export function getCandleSnapshot(
   if (params.endTime !== undefined) {
     req.endTime = params.endTime;
   }
-  const kind = params.kind ?? marketKindFromCoin(params.coin);
-  return infoRequest<Omit<Candle, 'kind'>[]>({ type: 'candleSnapshot', req }, label).then(
-    (candles) => candles.map((candle) => ({ ...candle, kind })),
+  const converter = new CandleConverter(params.kind ?? marketKindFromCoin(params.coin));
+  return infoRequest<CandleNative[]>({ type: 'candleSnapshot', req }, label).then((candles) =>
+    candles.map((candle) => converter.toCommon(candle)),
   );
 }
