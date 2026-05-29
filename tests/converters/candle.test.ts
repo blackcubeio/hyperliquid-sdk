@@ -19,14 +19,13 @@ const WIRE: CandleNative = {
 describe('CandleConverter HL — bijectivité totale', () => {
   const conv = new CandleConverter('perp');
 
-  it('toCommon mappe le wire vers le format unifié (extras null/vides)', () => {
+  it('toCommon mappe le wire vers le format unifié (qv/tbbv/tbqv null, pas de xtras)', () => {
     expect(conv.toCommon(WIRE)).toEqual({
       ...WIRE,
       kind: 'perp',
       qv: null,
       tbbv: null,
       tbqv: null,
-      xtras: {},
     } satisfies Candle);
   });
 

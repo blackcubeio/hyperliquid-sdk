@@ -76,8 +76,11 @@ export interface Candle {
   tbbv: string | null;
   /** Taker buy quote volume — `null` si non fourni. */
   tbqv: string | null;
-  /** Reste des champs **non standard / non modélisés** (rien n'est jeté). HL : `{}`. */
-  xtras: Record<string, unknown>;
+  /**
+   * Reste des champs **non standard / non modélisés** (rien n'est jeté).
+   * **Optionnel** : omis quand il n'y a rien à y mettre (cas HL).
+   */
+  xtras?: Record<string, unknown>;
 }
 
 export interface Signer {

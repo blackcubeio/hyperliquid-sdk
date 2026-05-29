@@ -20,7 +20,7 @@ export interface CandleNative {
 /**
  * Convertisseur **bijectif total** bougie : `toCommon(native) → Candle` / `toNative(Candle) → native`.
  * Le `kind` (déduit du coin, absent du wire) est porté par le convertisseur.
- * `qv`/`tbbv`/`tbqv` sont `null` (non fournis par HL) et `xtras` vide → bijection exacte.
+ * `qv`/`tbbv`/`tbqv` sont `null` (non fournis par HL) et `xtras` omis (rien hors common) → bijection exacte.
  */
 export class CandleConverter {
   constructor(private readonly kind: MarketKind) {}
@@ -41,7 +41,6 @@ export class CandleConverter {
       qv: null,
       tbbv: null,
       tbqv: null,
-      xtras: {},
     };
   }
 
