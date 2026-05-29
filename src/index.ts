@@ -8,10 +8,10 @@ export * from './rest/signing';
 export * from './rest/client';
 export * from './rest/get-pairs';
 export * from './rest/get-candles';
+export * from './rest/get-order-book';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
-export * from './rest/info/get-l2-book';
 export * from './rest/info/get-clearinghouse-state';
 export * from './rest/info/get-open-orders';
 export * from './rest/info/get-user-fills';
