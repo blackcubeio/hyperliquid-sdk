@@ -114,4 +114,30 @@ describe('UnifiedWsClient HL (mainnet réel, public)', () => {
     },
     30_000,
   );
+
+  it(
+    'subscribePrices délivre un Price[] (mid par marché)',
+    async () => {
+      const client = new UnifiedWsClient();
+      await client.connect();
+      try {
+        const prices = await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('timeout prices')), 25_000);
+          client.subscribePrices((received) => {
+            clearTimeout(timer);
+            resolve(received as unknown as Array<Record<string, unknown>>);
+          });
+        });
+        expect(prices.length).toBeGreaterThan(0);
+        const btc = prices.find((p) => p.name === 'BTC');
+        expect(btc).toBeDefined();
+        expect(btc?.kind).toBe('perp');
+        expect(typeof btc?.mid).toBe('string');
+        expect(btc?.mark).toBeNull();
+      } finally {
+        client.disconnect();
+      }
+    },
+    30_000,
+  );
 });

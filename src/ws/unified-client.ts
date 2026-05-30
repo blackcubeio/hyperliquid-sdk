@@ -1,7 +1,8 @@
-import type { Candle, MarketKind, OrderBook, Trade } from '../common/types';
+import type { Candle, MarketKind, OrderBook, Price, Trade } from '../common/types';
 import { type CandleNative, CandleConverter } from '../rest/converters/candle';
 import { type OrderBookNative, OrderBookConverter } from '../rest/converters/order-book';
 import { type BboWsNative, BboWsConverter } from './converters/bbo';
+import { type AllMidsWsNative, PricesWsConverter } from './converters/prices';
 import { type TradeWsNative, TradeWsConverter } from './converters/trade';
 import { WsClient, type Unsubscribe, type WsClientOptions } from './client';
 
@@ -72,6 +73,14 @@ export class UnifiedWsClient {
     const converter = new OrderBookConverter(params.kind ?? 'perp');
     return this.client.subscribeL2Book({ coin: params.name }, (raw) => {
       handler(converter.toCommon(raw as unknown as OrderBookNative));
+    });
+  }
+
+  /** Prix de tous les marchés (snapshot) : le handler reçoit un `Price[]` à chaque message. */
+  public subscribePrices(handler: (prices: Price[]) => void): Unsubscribe {
+    const converter = new PricesWsConverter('perp');
+    return this.client.subscribeAllMids((raw) => {
+      handler(converter.toCommon(raw as unknown as AllMidsWsNative));
     });
   }
 }
