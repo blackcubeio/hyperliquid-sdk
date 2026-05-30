@@ -1,7 +1,8 @@
-import type { Candle, MarketKind, OrderBook, Price, Trade } from '../common/types';
+import type { Candle, MarketKind, Order, OrderBook, Price, Trade } from '../common/types';
 import { type CandleNative, CandleConverter } from '../rest/converters/candle';
 import { type OrderBookNative, OrderBookConverter } from '../rest/converters/order-book';
 import { type BboWsNative, BboWsConverter } from './converters/bbo';
+import { type OrderUpdateWsNative, OrderWsConverter } from './converters/order';
 import { type AllMidsWsNative, PricesWsConverter } from './converters/prices';
 import { type TradeWsNative, TradeWsConverter } from './converters/trade';
 import { WsClient, type Unsubscribe, type WsClientOptions } from './client';
@@ -81,6 +82,25 @@ export class UnifiedWsClient {
     const converter = new PricesWsConverter('perp');
     return this.client.subscribeAllMids((raw) => {
       handler(converter.toCommon(raw as unknown as AllMidsWsNative));
+    });
+  }
+
+  /**
+   * Mises à jour d'ordres du compte (user-data) : le handler est appelé **une fois par ordre**.
+   * `user` (adresse du compte) est **requis** côté Hyperliquid.
+   */
+  public subscribeOrders(
+    params: { user?: string },
+    handler: (order: Order) => void,
+  ): Unsubscribe {
+    if (params.user === undefined) {
+      throw new Error('subscribeOrders: `user` (adresse du compte) est requis sur Hyperliquid');
+    }
+    const converter = new OrderWsConverter();
+    return this.client.subscribeOrderUpdates({ user: params.user as `0x${string}` }, (raw) => {
+      for (const event of raw as unknown as OrderUpdateWsNative[]) {
+        handler(converter.toCommon(event));
+      }
     });
   }
 }
