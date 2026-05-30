@@ -10,10 +10,22 @@ export const WITHDRAW_TYPES: Eip712Types = {
   ],
 };
 
+/**
+ * Paramètres unifiés de retrait (mêmes champs sur les 3 SDK ; chaque exchange lit ce qu'il
+ * lui faut). HL : `address` = destination (requise), `amount` en USDC vers Arbitrum.
+ */
 export interface WithdrawParams {
-  destination: `0x${string}`;
-  /** Montant USDC en chaîne. */
+  /** Montant USDC (chaîne). */
   amount: string;
+  /** Adresse de destination (requise côté HL). */
+  address?: string;
+  /** Actif (Aster). */
+  asset?: string;
+  /** Chaîne de destination (Aster). */
+  chainId?: string;
+  /** Frais (Aster). */
+  fee?: string;
+  /** Nonce/temps (ms) ; défaut maintenant. */
   time?: number;
 }
 
@@ -21,13 +33,13 @@ export function buildWithdrawAction(params: WithdrawParams, time: number) {
   return {
     type: 'withdraw3',
     signatureChainId: '0x66eee' as const,
-    destination: params.destination,
+    destination: params.address as `0x${string}`,
     amount: params.amount,
     time,
   };
 }
 
-/** Retrait d'USDC vers Arbitrum (user-signed). */
+/** Retrait d'USDC vers Arbitrum (**user-signed**). `address` = destination. */
 export function withdraw<TResponse = unknown>(
   params: WithdrawParams,
   label: string,
