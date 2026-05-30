@@ -1,5 +1,6 @@
-import type { PlaceOrderParams, PlaceOrderTif, PlaceOrderType } from '../common/types';
-import type { MarketKind, Order, Side } from '../common/types';
+import type { HyperliquidClient } from '../common/config';
+import type { PlaceOrderParams, PlaceOrderTif } from '../common/types';
+import type { Order } from '../common/types';
 import type { Tif } from '../common/types';
 import { assetIndex } from '../common/utils';
 import { exchangeL1Action } from './client';
@@ -17,11 +18,16 @@ interface OrderResponse {
  * Résout `name` → asset index, place l'ordre, puis construit l'`Order` depuis les paramètres
  * (l'`id` est extrait de la réponse si présent). `market` = IOC borné par `price`.
  */
-export function placeOrder(params: PlaceOrderParams, label: string): Promise<Order> {
+export function placeOrder(
+  client: HyperliquidClient,
+  params: PlaceOrderParams,
+  label: string,
+): Promise<Order> {
   const tif: Tif = params.type === 'market' ? 'Ioc' : TIF[params.tif ?? 'gtc'];
-  return getMeta(undefined, label).then((meta) => {
+  return getMeta(client, undefined, label).then((meta) => {
     const asset = assetIndex(meta.universe, params.name);
     return exchangeL1Action<OrderResponse>(
+      client,
       buildOrderAction([
         {
           asset,

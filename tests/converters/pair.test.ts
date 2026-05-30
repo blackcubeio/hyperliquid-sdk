@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Pair } from '../../src/common/types';
-import { PairConverter } from '../../src/converters/pair';
 import type { AssetMeta } from '../../src/common/types';
 import type { SpotPair, SpotToken } from '../../src/common/types';
+import { PairConverter } from '../../src/converters/pair';
 
 const PERP: AssetMeta = {
   name: 'BTC',

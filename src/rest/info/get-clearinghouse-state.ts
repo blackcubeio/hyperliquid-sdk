@@ -1,11 +1,5 @@
-import type {
-  AssetPosition,
-  ClearinghouseState,
-  MarginSummary,
-  PerpPosition,
-  PositionCumFunding,
-  PositionLeverage,
-} from '../../common/types';
+import type { HyperliquidClient } from '../../common/config';
+import type { ClearinghouseState } from '../../common/types';
 import type { JsonValue } from '../../common/types';
 import { infoRequest } from '../client';
 
@@ -14,6 +8,7 @@ import { infoRequest } from '../client';
  * @param params `user` = adresse réelle du compte master/sub (jamais l'adresse de l'agent wallet).
  */
 export function getClearinghouseState(
+  client: HyperliquidClient,
   params: {
     user: `0x${string}`;
     dex?: string;
@@ -24,5 +19,5 @@ export function getClearinghouseState(
   if (params.dex !== undefined) {
     body.dex = params.dex;
   }
-  return infoRequest<ClearinghouseState>(body, label);
+  return infoRequest<ClearinghouseState>(client, body, label);
 }

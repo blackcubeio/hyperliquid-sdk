@@ -1,3 +1,4 @@
+import type { HyperliquidClient } from '../../common/config';
 import type { UpdateIsolatedMarginParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
 
@@ -15,8 +16,9 @@ export function buildUpdateIsolatedMarginAction(
 
 /** Ajuste la marge isolée d'une position (signé, `/exchange`). */
 export function updateIsolatedMargin<TResponse = unknown>(
+  client: HyperliquidClient,
   params: UpdateIsolatedMarginParams,
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateIsolatedMarginAction(params), label);
+  return exchangeL1Action<TResponse>(client, buildUpdateIsolatedMarginAction(params), label);
 }
