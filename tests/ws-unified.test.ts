@@ -33,4 +33,30 @@ describe('UnifiedWsClient HL (mainnet réel, public)', () => {
     },
     30_000,
   );
+
+  it(
+    'subscribeTrades délivre un Trade unifié par trade',
+    async () => {
+      const client = new UnifiedWsClient();
+      await client.connect();
+      try {
+        const trade = await new Promise<Record<string, unknown>>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('timeout trades')), 25_000);
+          client.subscribeTrades({ name: 'BTC' }, (received) => {
+            clearTimeout(timer);
+            resolve(received as unknown as Record<string, unknown>);
+          });
+        });
+        expect(typeof trade.price).toBe('string');
+        expect(typeof trade.size).toBe('string');
+        expect(['buy', 'sell']).toContain(trade.side);
+        expect(trade.maker).toBeNull();
+        expect(typeof trade.time).toBe('number');
+        expect(typeof trade.id).toBe('number');
+      } finally {
+        client.disconnect();
+      }
+    },
+    30_000,
+  );
 });

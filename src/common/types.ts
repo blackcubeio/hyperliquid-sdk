@@ -276,6 +276,29 @@ export interface Balance {
 }
 
 /**
+ * Trade public au **format unifié Blackcube** (cœur identique entre les SDK).
+ * `side` = direction du **taker** (agresseur). `maker` = ce record est-il le maker
+ * (`null` si modèle par-trade, ex. flux WS). `xtras` porte le natif hors cœur.
+ * Hyperliquid n'a pas de trades publics REST ; ce type sert au flux WS `subscribeTrades`.
+ */
+export interface Trade {
+  /** Prix d'exécution (chaîne décimale). */
+  price: string;
+  /** Taille exécutée (chaîne décimale). */
+  size: string;
+  /** Direction du taker/agresseur ; `null` si indéterminé. */
+  side: Side | null;
+  /** Ce record est-il le maker ; `null` si non applicable (modèle par-trade). */
+  maker: boolean | null;
+  /** Timestamp (ms). */
+  time: number;
+  /** ID de trade exchange ; `null` si non fourni. */
+  id: number | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
+/**
  * Point d'historique de **taux de funding** au format unifié (cœur identique entre SDK).
  * `xtras` porte le natif hors cœur (premium HL…), omis si vide.
  */
