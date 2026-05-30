@@ -1,3 +1,4 @@
+import type { HyperliquidClient } from '../common/config';
 import type {
   Candle,
   MarketKind,
@@ -7,7 +8,7 @@ import type {
   Trade,
   UserTrade,
 } from '../common/types';
-import type { Unsubscribe, WsClientOptions } from '../common/ws';
+import type { Unsubscribe } from '../common/ws';
 import { BboWsConverter, type BboWsNative } from '../converters/bbo';
 import { CandleConverter, type CandleNative } from '../converters/candle';
 import { type OrderUpdateWsNative, OrderWsConverter } from '../converters/order';
@@ -18,27 +19,58 @@ import { UserTradeConverter, type UserTradeNative } from '../converters/user-tra
 import { WsClient } from './client';
 
 /**
- * Client WebSocket **unifié Blackcube** : surface identique entre les SDK. Chaque méthode
+ * Client WebSocket **unifié Blackcube** (interne ; exposé via `Hyperliquid.ws()`). Chaque méthode
  * `subscribeX` délivre au handler le **type unifié déjà converti** (`Candle`, `OrderBook`…).
- * Wrappe le {@link WsClient} natif Hyperliquid (un seul socket public + user-data).
+ * Wrappe le {@link WsClient} natif Hyperliquid (un seul socket : public + user-data).
  *
- * Les converters WS sont **unidirectionnels** (`toCommon` seul) : le flux est en lecture
- * seule, on ne renvoie jamais de payload WS au serveur. Quand le payload WS coïncide avec
- * le natif REST (cas des bougies HL), le convertisseur REST est réutilisé tel quel.
+ * **Connexion automatique** : le socket est ouvert paresseusement à la 1ʳᵉ souscription et fermé
+ * dès que le dernier abonnement est retiré (ref-counting). Le développeur ne gère que
+ * `subscribeX(…) → unsubscribe()`. Converters WS **unidirectionnels** (lecture seule) : quand le
+ * payload WS coïncide avec le natif REST (bougies, fills HL), le convertisseur REST est réutilisé.
  */
 export class UnifiedWsClient {
-  private readonly client: WsClient;
+  private readonly client: HyperliquidClient;
+  private readonly label: string | undefined;
+  private ws: WsClient | null = null;
+  private refs = 0;
 
-  constructor(options: WsClientOptions = {}) {
-    this.client = new WsClient(options);
+  constructor(client: HyperliquidClient, label?: string) {
+    this.client = client;
+    this.label = label;
   }
 
-  public connect(): Promise<void> {
-    return this.client.connect();
+  /** Ouvre (lazy) le socket et renvoie le client ; incrémente le ref-count. */
+  private wsClient(): WsClient {
+    if (this.ws === null) {
+      this.ws = new WsClient(this.client, { label: this.label });
+      void this.ws.connect();
+    }
+    this.refs += 1;
+    return this.ws;
   }
 
-  public disconnect(): void {
-    this.client.disconnect();
+  /** Décrémente le ref-count et ferme le socket s'il tombe à zéro. */
+  private release(): void {
+    this.refs -= 1;
+    if (this.refs <= 0 && this.ws !== null) {
+      this.ws.disconnect();
+      this.ws = null;
+      this.refs = 0;
+    }
+  }
+
+  /** Souscription ref-comptée : ouvre le socket au 1er abonné, ferme au dernier. */
+  private subscribe(fn: (ws: WsClient) => Unsubscribe): Unsubscribe {
+    const off = fn(this.wsClient());
+    let released = false;
+    return () => {
+      if (released === true) {
+        return;
+      }
+      released = true;
+      off();
+      this.release();
+    };
   }
 
   /** Bougies temps réel. `kind` (défaut `perp`) annote la bougie unifiée. */
@@ -47,19 +79,23 @@ export class UnifiedWsClient {
     handler: (candle: Candle) => void,
   ): Unsubscribe {
     const converter = new CandleConverter(params.kind ?? 'perp');
-    return this.client.subscribeCandle({ coin: params.name, interval: params.interval }, (raw) => {
-      handler(converter.toCommon(raw as unknown as CandleNative));
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeCandle({ coin: params.name, interval: params.interval }, (raw) => {
+        handler(converter.toCommon(raw as unknown as CandleNative));
+      }),
+    );
   }
 
   /** Trades publics temps réel : le handler est appelé **une fois par trade**. */
   public subscribeTrades(params: { name: string }, handler: (trade: Trade) => void): Unsubscribe {
     const converter = new TradeWsConverter();
-    return this.client.subscribeTrades({ coin: params.name }, (raw) => {
-      for (const native of raw as unknown as TradeWsNative[]) {
-        handler(converter.toCommon(native));
-      }
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeTrades({ coin: params.name }, (raw) => {
+        for (const native of raw as unknown as TradeWsNative[]) {
+          handler(converter.toCommon(native));
+        }
+      }),
+    );
   }
 
   /** Meilleure limite (BBO) temps réel → {@link OrderBook} (1 niveau par côté). */
@@ -68,9 +104,11 @@ export class UnifiedWsClient {
     handler: (book: OrderBook) => void,
   ): Unsubscribe {
     const converter = new BboWsConverter(params.kind ?? 'perp');
-    return this.client.subscribeBbo({ coin: params.name }, (raw) => {
-      handler(converter.toCommon(raw as unknown as BboWsNative));
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeBbo({ coin: params.name }, (raw) => {
+        handler(converter.toCommon(raw as unknown as BboWsNative));
+      }),
+    );
   }
 
   /** Carnet d'ordres (L2) temps réel → {@link OrderBook}. */
@@ -79,17 +117,21 @@ export class UnifiedWsClient {
     handler: (book: OrderBook) => void,
   ): Unsubscribe {
     const converter = new OrderBookConverter(params.kind ?? 'perp');
-    return this.client.subscribeL2Book({ coin: params.name }, (raw) => {
-      handler(converter.toCommon(raw as unknown as OrderBookNative));
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeL2Book({ coin: params.name }, (raw) => {
+        handler(converter.toCommon(raw as unknown as OrderBookNative));
+      }),
+    );
   }
 
   /** Prix de tous les marchés (snapshot) : le handler reçoit un `Price[]` à chaque message. */
   public subscribePrices(handler: (prices: Price[]) => void): Unsubscribe {
     const converter = new PricesWsConverter('perp');
-    return this.client.subscribeAllMids((raw) => {
-      handler(converter.toCommon(raw as unknown as AllMidsWsNative));
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeAllMids((raw) => {
+        handler(converter.toCommon(raw as unknown as AllMidsWsNative));
+      }),
+    );
   }
 
   /**
@@ -100,12 +142,15 @@ export class UnifiedWsClient {
     if (params.user === undefined) {
       throw new Error('subscribeOrders: `user` (adresse du compte) est requis sur Hyperliquid');
     }
+    const user = params.user as `0x${string}`;
     const converter = new OrderWsConverter();
-    return this.client.subscribeOrderUpdates({ user: params.user as `0x${string}` }, (raw) => {
-      for (const event of raw as unknown as OrderUpdateWsNative[]) {
-        handler(converter.toCommon(event));
-      }
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeOrderUpdates({ user }, (raw) => {
+        for (const event of raw as unknown as OrderUpdateWsNative[]) {
+          handler(converter.toCommon(event));
+        }
+      }),
+    );
   }
 
   /**
@@ -120,12 +165,15 @@ export class UnifiedWsClient {
     if (params.user === undefined) {
       throw new Error('subscribeUserTrades: `user` (adresse du compte) est requis sur Hyperliquid');
     }
+    const user = params.user as `0x${string}`;
     const converter = new UserTradeConverter();
-    return this.client.subscribeUserFills({ user: params.user as `0x${string}` }, (raw) => {
-      const fills = (raw as { fills?: UserTradeNative[] }).fills ?? [];
-      for (const fill of fills) {
-        handler(converter.toCommon(fill));
-      }
-    });
+    return this.subscribe((ws) =>
+      ws.subscribeUserFills({ user }, (raw) => {
+        const fills = (raw as { fills?: UserTradeNative[] }).fills ?? [];
+        for (const fill of fills) {
+          handler(converter.toCommon(fill));
+        }
+      }),
+    );
   }
 }

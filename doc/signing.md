@@ -2,7 +2,8 @@
 
 Hyperliquid runs on an EVM chain, so requests are signed with **secp256k1 / EIP-712**. There are
 two distinct schemes, both implemented in `src/rest/signing.ts` (validated byte-for-byte against
-the official Python SDK and the `nktkas` TS SDK vectors).
+the official Python SDK and the `nktkas` TS SDK vectors). Signing is **internal** : la classe
+`Hyperliquid` signe pour toi, tu ne manipules jamais ces primitives directement.
 
 ## L1 actions (orders, cancels, modify, leverage…)
 
@@ -13,30 +14,17 @@ the official Python SDK and the `nktkas` TS SDK vectors).
    `source = 'a'` (mainnet) / `'b'` (testnet).
 5. signature `{ r, s, v }`.
 
-```ts
-import { createL1ActionHash, signL1Action } from '@blackcube/hyperliquid-sdk';
-
-const action = { type: 'cancel', cancels: [{ a: 0, o: 12345 }] };
-const hash = createL1ActionHash({ action, nonce: Date.now() });
-const sig = signL1Action({ privateKey, action, nonce: Date.now(), isTestnet: true });
-```
-
 ## User-signed actions (transfers, withdraw, approve agent…)
 
 Standard EIP-712 typed data: domain `HyperliquidSignTransaction`, `chainId` from the action's
 `signatureChainId` (`0x66eee`), `hyperliquidChain` = `Mainnet`/`Testnet`. Each action carries its
-own types.
+own types. Exposées via les scopes `dex.transfers(...)` / `dex.agent(...)`.
 
-```ts
-import { signUserSignedAction, USD_SEND_TYPES } from '@blackcube/hyperliquid-sdk';
+## Signers, labels & networks
 
-const sig = signUserSignedAction({ privateKey, action, types: USD_SEND_TYPES });
-```
-
-## Signer registry, labels & networks
-
-Signers are registered **per label** in `init({ signers })`. A signer is self-contained and
-**carries its own network** — that's what lets mainnet and testnet coexist in one process:
+Tu passes les signers au **constructeur** `new Hyperliquid(signers, { default })` — un par
+**label**. Chaque signer est autonome et **porte son propre réseau** : c'est ce qui permet à
+mainnet et testnet de coexister dans le même process (plus de singleton global).
 
 ```ts
 interface Signer {
@@ -46,37 +34,39 @@ interface Signer {
   vaultAddress?: `0x${string}`;    // vault / sub-account included in L1 actions
 }
 
-init({
-  signers: {
+const dex = new Hyperliquid(
+  {
     trader: { privateKey: TRADER_KEY, publicKey: '0x1171…', network: 'mainnet' },
     tester: { privateKey: TESTER_KEY, publicKey: '0xabcd…', network: 'testnet' },
   },
-});
+  { default: 'trader' },
+);
 
-createLimitOrder(params, 'tester');   // 2nd arg = the label; network comes from the signer
+await dex.perp('tester').placeOrder(params);  // le label choisit le compte ET le réseau
+await dex.perp().getCandles(query);            // lecture publique, signer par défaut
 ```
 
-Two resolvers back the read/write rules:
+Règles lecture / écriture, internes à la façade :
 
-- `resolveSigner(label)` — for **writes**. The label is **mandatory**: a missing label throws
-  `Un signer (label) est obligatoire pour cette action signée`, an unknown one throws
-  `Aucun signer enregistré sous "…"`. It returns the key, the public address, the network and the
-  optional vault — the network drives the L1 `source` (`a`/`b`) and the wire `hyperliquidChain`.
-- `resolveReadNetwork(label?)` — for **reads**. The label is **optional**: no label → `mainnet`,
-  a label → that signer's network; an unknown label still throws.
+- **Lectures** (marché, `getCandles`, subscriptions…) — pas de signer requis ; sans label →
+  **mainnet**, un label → le réseau de ce signer.
+- **Écritures** (`placeOrder`, `withdraw`, `updateLeverage`…) — un signer (label, ou défaut) est
+  **obligatoire** ; il fixe le wallet **et** le réseau (`source` L1 `a`/`b`, `hyperliquidChain`).
 
-> **API / agent wallets.** A master account can approve API wallets (`approveAgent`) to sign on its
-> behalf. The API wallet only **signs** — to read account data you must pass the **master/sub
-> address** (querying the agent address returns empty). Each signer's `privateKey` may be the
-> master key or an approved agent key.
+> **API / agent wallets.** A master account can approve API wallets (`dex.agent().approveAgent`) to
+> sign on its behalf. The API wallet only **signs** — to read account data you must pass the
+> **master/sub address** as `publicKey` (querying the agent address returns empty).
 
-## Primitives
+## Primitives internes
 
-| Function | Purpose |
+Toutes dans `src/rest/signing.ts`, utilisées par la façade :
+
+| Fonction | Rôle |
 |---|---|
-| `createL1ActionHash({ action, nonce, vaultAddress?, expiresAfter? })` | keccak256 hash of an L1 action |
-| `signL1Action({ privateKey, action, nonce, isTestnet?, vaultAddress?, expiresAfter? })` | sign an L1 action → `{ r, s, v }` |
-| `signUserSignedAction({ privateKey, action, types })` | sign a user-signed (EIP-712 typed) action |
-| `privateKeyToAddress(privateKey)` | derive the EVM address from a private key |
+| `createL1ActionHash({ action, nonce, vaultAddress?, expiresAfter? })` | keccak256 hash d'une action L1 |
+| `signL1Action({ privateKey, action, nonce, isTestnet?, vaultAddress?, expiresAfter? })` | signe une action L1 → `{ r, s, v }` |
+| `signUserSignedAction({ privateKey, action, types })` | signe une action user-signed (EIP-712 typée) |
+| `privateKeyToAddress(privateKey)` | dérive l'adresse EVM depuis une clé privée |
+| `keyTypeOf(privateKey)` / `toChecksumAddress(address)` | helpers exposés via `dex.helpers()` |
 
 Dependencies: `@noble/curves` (secp256k1), `@noble/hashes` (keccak256), `@msgpack/msgpack`. No `viem`/`ethers`.

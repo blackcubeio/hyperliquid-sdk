@@ -6,6 +6,9 @@ export interface JsonObject {
 
 export type Network = 'mainnet' | 'testnet';
 
+/** Chaîne hexadécimale préfixée `0x` (clé/adresse EVM). */
+export type Hex = `0x${string}`;
+
 /** Type de marché d'une paire : perpetual ou spot. */
 export type MarketKind = 'perp' | 'spot';
 
@@ -271,6 +274,18 @@ export interface Balance {
   available: string | null;
   /** Valeur en USD ; `null` si non fournie. */
   usdValue: string | null;
+  /** Champs natifs hors cœur (rien jeté), omis si vide. */
+  xtras?: Record<string, unknown>;
+}
+
+/**
+ * Sous-compte au **format unifié Blackcube** (cœur identique entre SDK). Hyperliquid n'expose
+ * pas de liste de sous-comptes : ce type fait partie du contrat commun mais n'est pas implémenté
+ * ici (la classe `Hyperliquid` n'implémente pas `ISubAccounts`).
+ */
+export interface SubAccount {
+  /** Adresse du sous-compte (ou du compte principal). */
+  address: string;
   /** Champs natifs hors cœur (rien jeté), omis si vide. */
   xtras?: Record<string, unknown>;
 }

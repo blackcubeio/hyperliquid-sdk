@@ -1,4 +1,4 @@
-import { type WebSocketFactory, type WebSocketLike, getConfig } from '../common/config';
+import type { HyperliquidClient, WebSocketFactory, WebSocketLike } from '../common/config';
 import type { JsonObject, JsonValue } from '../common/types';
 import type { CancelParams } from '../common/types';
 import type { ModifyParams } from '../common/types';
@@ -27,6 +27,7 @@ export class WsClient {
   public onClose: (() => void) | null = null;
   public onReconnect: (() => void) | null = null;
 
+  private readonly client: HyperliquidClient;
   private readonly label: string | undefined;
   private readonly url: string;
   private readonly createSocket: WebSocketFactory;
@@ -34,16 +35,19 @@ export class WsClient {
   private socket: WebSocketLike | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private postId = 0;
-  private readonly pending = new Map<number, PendingPost>();
+  private readonly pendingPosts = new Map<number, PendingPost>();
   private readonly handlers = new Map<string, Set<StreamHandler>>();
   private readonly activeSubscriptions = new Map<string, JsonObject>();
   private shouldReconnect = false;
+  /** Messages émis avant l'ouverture du socket, rejoués à `onopen` (connexion paresseuse). */
+  private pending: string[] = [];
+  private open = false;
 
-  constructor(options: WsClientOptions = {}) {
-    const config = getConfig();
+  constructor(client: HyperliquidClient, options: WsClientOptions = {}) {
+    this.client = client;
     this.label = options.label;
-    this.url = options.url ?? config.wsUrls[resolveReadNetwork(options.label)];
-    this.createSocket = options.webSocket ?? config.webSocket;
+    this.url = options.url ?? client.wsUrls[resolveReadNetwork(client, options.label)];
+    this.createSocket = options.webSocket ?? client.webSocket;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 50_000;
   }
 
@@ -53,6 +57,11 @@ export class WsClient {
       const socket = this.createSocket(this.url);
       this.socket = socket;
       socket.onopen = () => {
+        this.open = true;
+        for (const payload of this.pending) {
+          socket.send(payload);
+        }
+        this.pending = [];
         this.startHeartbeat();
         resolve();
       };
@@ -69,6 +78,8 @@ export class WsClient {
 
   public disconnect(): void {
     this.shouldReconnect = false;
+    this.open = false;
+    this.pending = [];
     this.stopHeartbeat();
     if (this.socket !== null) {
       this.socket.close();
@@ -141,7 +152,7 @@ export class WsClient {
   ): Promise<TResult> {
     const id = ++this.postId;
     return new Promise<TResult>((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (value: JsonValue) => void, reject });
+      this.pendingPosts.set(id, { resolve: resolve as (value: JsonValue) => void, reject });
       this.send({ method: 'post', id, request });
     });
   }
@@ -150,7 +161,7 @@ export class WsClient {
   private signedActionRequest<TResult extends JsonValue = JsonValue>(
     action: Record<string, unknown>,
   ): Promise<TResult> {
-    const signer = resolveSigner(this.label);
+    const signer = resolveSigner(this.client, this.label);
     const nonce = Date.now();
     const signature = signL1Action({
       privateKey: signer.privateKey,
@@ -201,10 +212,13 @@ export class WsClient {
   }
 
   private send(payload: Record<string, unknown>): void {
-    if (this.socket === null) {
-      throw new Error("WebSocket non connecté ; appelle connect() d'abord");
+    const serialized = JSON.stringify(payload);
+    // Connexion paresseuse : tant que le socket n'est pas ouvert, on met en file (rejoué à onopen).
+    if (this.socket === null || this.open === false) {
+      this.pending.push(serialized);
+      return;
     }
-    this.socket.send(JSON.stringify(payload));
+    this.socket.send(serialized);
   }
 
   private handleMessage(raw: unknown): void {
@@ -236,9 +250,9 @@ export class WsClient {
     if (typeof id !== 'number') {
       return;
     }
-    const pendingPost = this.pending.get(id);
+    const pendingPost = this.pendingPosts.get(id);
     if (pendingPost !== undefined) {
-      this.pending.delete(id);
+      this.pendingPosts.delete(id);
       pendingPost.resolve(data.response ?? null);
     }
   }
@@ -255,6 +269,7 @@ export class WsClient {
   private handleClose(): void {
     this.stopHeartbeat();
     this.socket = null;
+    this.open = false;
     if (this.onClose !== null) {
       this.onClose();
     }

@@ -1,5 +1,6 @@
+import type { HyperliquidClient } from '../../common/config';
 import type { AssetMeta, Meta } from '../../common/types';
-import type { JsonValue, MarketKind } from '../../common/types';
+import type { JsonValue } from '../../common/types';
 import { infoRequest } from '../client';
 
 type MetaWire = { universe: Omit<AssetMeta, 'kind'>[]; marginTables?: unknown[] };
@@ -14,10 +15,10 @@ export function tagPerpMeta(meta: MetaWire): Meta {
  * L'index dans `universe` est l'asset ID utilisé pour les ordres (BTC = 0 sur mainnet).
  * Chaque actif porte `kind: 'perp'`.
  */
-export function getMeta(dex?: string, label?: string): Promise<Meta> {
+export function getMeta(client: HyperliquidClient, dex?: string, label?: string): Promise<Meta> {
   const body: Record<string, JsonValue> = { type: 'meta' };
   if (dex !== undefined) {
     body.dex = dex;
   }
-  return infoRequest<MetaWire>(body, label).then(tagPerpMeta);
+  return infoRequest<MetaWire>(client, body, label).then(tagPerpMeta);
 }

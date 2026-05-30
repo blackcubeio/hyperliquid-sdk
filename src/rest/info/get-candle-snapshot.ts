@@ -1,3 +1,4 @@
+import type { HyperliquidClient } from '../../common/config';
 import type { Candle, JsonValue, MarketKind } from '../../common/types';
 import { CandleConverter, type CandleNative } from '../../converters/candle';
 import { infoRequest } from '../client';
@@ -17,6 +18,7 @@ export function marketKindFromCoin(coin: string): MarketKind {
  * @param params `interval` ex. "1m", "1h" ; `startTime`/`endTime` en ms.
  */
 export function getCandleSnapshot(
+  client: HyperliquidClient,
   params: {
     coin: string;
     interval: string;
@@ -36,7 +38,7 @@ export function getCandleSnapshot(
     req.endTime = params.endTime;
   }
   const converter = new CandleConverter(params.kind ?? marketKindFromCoin(params.coin));
-  return infoRequest<CandleNative[]>({ type: 'candleSnapshot', req }, label).then((candles) =>
-    candles.map((candle) => converter.toCommon(candle)),
+  return infoRequest<CandleNative[]>(client, { type: 'candleSnapshot', req }, label).then(
+    (candles) => candles.map((candle) => converter.toCommon(candle)),
   );
 }

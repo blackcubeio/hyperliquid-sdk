@@ -1,51 +1,33 @@
-export * from './common/constants';
-export * from './common/config';
-export * from './common/types';
-export * from './common/utils';
+// ── Surface publique du SDK Hyperliquid ───────────────────────────────────────
+// Point d'entrée unique : la classe `Hyperliquid`. Tout le reste (fonctions REST, clients WS
+// bruts, signing, types natifs) est interne et n'est pas exporté.
 
-export * from './rest/types';
-export * from './rest/signing';
-export * from './rest/client';
-export * from './rest/get-pairs';
-export * from './rest/get-candles';
-export * from './rest/get-order-book';
-export * from './rest/get-prices';
-export * from './rest/get-funding-history';
-export * from './rest/get-balances';
-export * from './rest/get-positions';
-export * from './rest/get-open-orders';
-export * from './rest/get-user-trades';
-export * from './rest/update-leverage';
-export * from './rest/place-order';
-export * from './rest/cancel-order';
-export * from './rest/cancel-all-orders';
-export * from './rest/edit-order';
+/** Façade : `new Hyperliquid(signers, { default })` puis `.perp()/.spot()/.account()/.system()/.helpers()/.ws()`. */
+export { Hyperliquid, type HyperliquidDexOptions } from './dex/hyperliquid';
 
-export * from './rest/info/get-all-mids';
-export * from './rest/info/get-meta';
-export * from './rest/info/get-clearinghouse-state';
-export * from './rest/info/get-open-orders';
-export * from './rest/info/get-user-fills';
-export * from './rest/info/get-candle-snapshot';
-export * from './rest/info/get-meta-spot';
-export * from './rest/info/get-meta-and-asset-ctxs';
-export * from './rest/info/get-meta-and-asset-ctxs-spot';
-export * from './rest/info/get-clearinghouse-state-spot';
-export * from './rest/info/get-order-status';
-export * from './rest/info/get-frontend-open-orders';
-export * from './rest/info/get-user-fills-by-time';
+/** Contrat : interfaces de capacités + types d'entrée (Input) des méthodes. */
+export type * from './dex/contract';
 
-export * from './rest/exchange/place-order';
-export * from './rest/exchange/cancel-order';
-export * from './rest/exchange/cancel-by-cloid';
-export * from './rest/exchange/modify-order';
-export * from './rest/exchange/update-leverage';
-export * from './rest/exchange/update-isolated-margin';
-export * from './rest/exchange/schedule-cancel';
-export * from './rest/exchange/usd-send';
-export * from './rest/exchange/withdraw';
-export * from './rest/exchange/approve-agent';
-export * from './rest/exchange/spot-send';
-export * from './rest/exchange/usd-class-transfer';
+/** Configuration d'un signer (passé au constructeur) et réseau. */
+export type { Signer, Network } from './common/types';
 
-export * from './ws/client';
+/** Types **de sortie** unifiés renvoyés par les méthodes de la façade. */
+export type {
+  Balance,
+  Candle,
+  FundingRate,
+  MarketKind,
+  Order,
+  OrderBook,
+  OrderBookLevel,
+  Pair,
+  Position,
+  Price,
+  Side,
+  SubAccount,
+  Trade,
+  UserTrade,
+} from './common/types';
+
+/** Unsubscribe : valeur de retour des souscriptions WS. */
+export type { Unsubscribe } from './common/ws';

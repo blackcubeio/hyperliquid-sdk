@@ -1,3 +1,4 @@
+import type { HyperliquidClient } from '../../common/config';
 import type { CancelByCloidParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
 
@@ -11,8 +12,9 @@ export function buildCancelByCloidAction(cancels: CancelByCloidParams[]): Record
 
 /** Annule un ou plusieurs ordres par client order ID (signé, `/exchange`). */
 export function cancelOrdersByCloid<TResponse = unknown>(
+  client: HyperliquidClient,
   cancels: CancelByCloidParams[],
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelByCloidAction(cancels), label);
+  return exchangeL1Action<TResponse>(client, buildCancelByCloidAction(cancels), label);
 }

@@ -1,9 +1,11 @@
+import type { HyperliquidClient } from '../../common/config';
 import type { JsonValue } from '../../common/types';
 import type { UserFill } from '../../common/types';
 import { infoRequest } from '../client';
 
 /** Fills d'un compte sur une fenêtre temporelle (max 500 par requête ; paginer via le dernier `time`). */
 export function getUserFillsByTime(
+  client: HyperliquidClient,
   params: {
     user: `0x${string}`;
     startTime: number;
@@ -23,5 +25,5 @@ export function getUserFillsByTime(
   if (params.aggregateByTime !== undefined) {
     body.aggregateByTime = params.aggregateByTime;
   }
-  return infoRequest<UserFill[]>(body, label);
+  return infoRequest<UserFill[]>(client, body, label);
 }

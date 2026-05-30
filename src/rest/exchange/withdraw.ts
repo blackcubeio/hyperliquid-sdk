@@ -1,3 +1,4 @@
+import type { HyperliquidClient } from '../../common/config';
 import type { WithdrawParams } from '../../common/types';
 import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
@@ -23,11 +24,12 @@ export function buildWithdrawAction(params: WithdrawParams, time: number) {
 
 /** Retrait d'USDC vers Arbitrum (**user-signed**). `address` = destination. */
 export function withdraw<TResponse = unknown>(
+  client: HyperliquidClient,
   params: WithdrawParams,
   label: string,
 ): Promise<TResponse> {
   const time = params.time ?? Date.now();
-  return userSignedRequest<TResponse>({
+  return userSignedRequest<TResponse>(client, {
     action: buildWithdrawAction(params, time),
     types: WITHDRAW_TYPES,
     nonce: time,
