@@ -50,6 +50,7 @@ import type {
   EvmHelper,
   FundingQuery,
   IAccount,
+  IDeadManSwitch,
   IIsolatedMargin,
   IMarginMode,
   IMarketData,
@@ -310,7 +311,7 @@ class HyperliquidMarket
 
 /** Scope **compte transverse** (sans produit) : soldes, retrait. HL n'expose pas de liste de
  * sous-comptes → pas de `ISubAccounts`. */
-class HyperliquidAccount implements IAccount {
+class HyperliquidAccount implements IAccount, IDeadManSwitch {
   constructor(
     private readonly client: HyperliquidClient,
     private readonly label: string | undefined,
@@ -336,6 +337,14 @@ class HyperliquidAccount implements IAccount {
   }
   public withdraw(input: WithdrawInput): Promise<unknown> {
     return withdraw(this.client, { amount: input.amount, address: input.address }, this.signed());
+  }
+
+  // ── IDeadManSwitch (HL : scheduleCancel, échéance = timestamp absolu ms) ──
+  public armCancelAll(afterMs: number): Promise<unknown> {
+    return scheduleCancel(this.client, { time: Date.now() + afterMs }, this.signed());
+  }
+  public disarm(): Promise<unknown> {
+    return scheduleCancel(this.client, {}, this.signed());
   }
 }
 
