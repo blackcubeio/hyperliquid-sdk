@@ -1,12 +1,7 @@
+import type { ModifyParams } from '../../common/types';
+import type { OrderParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-import { type OrderParams, buildOrderWire } from './place-order';
-
-export interface ModifyParams {
-  /** Order ID de l'ordre à modifier. */
-  oid: number;
-  /** Nouvel ordre (remplace l'ancien). */
-  order: OrderParams;
-}
+import { buildOrderWire } from './place-order';
 
 /** Construit l'action L1 `modify`. */
 export function buildModifyAction(params: ModifyParams): Record<string, unknown> {

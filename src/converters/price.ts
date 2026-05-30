@@ -1,5 +1,5 @@
 import type { MarketKind, Price } from '../common/types';
-import type { AssetCtx } from '../rest/info/get-meta-and-asset-ctxs';
+import type { AssetCtx } from '../common/types';
 
 /** Contexte natif HL (`metaAndAssetCtxs`) — le `name` vient du meta aligné par index. */
 export type PriceNative = AssetCtx;

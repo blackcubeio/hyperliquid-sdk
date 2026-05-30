@@ -1,5 +1,5 @@
 import type { Order } from '../common/types';
-import type { OpenOrder } from '../rest/info/get-open-orders';
+import type { OpenOrder } from '../common/types';
 
 /** Ordre ouvert natif HL (`openOrders`). */
 export type OrderNative = OpenOrder;
@@ -80,7 +80,11 @@ export class OrderWsConverter {
   toCommon(event: OrderUpdateWsNative): Order {
     const order = this.rest.toCommon(event.order);
     order.status = WS_STATUS[event.status] ?? 'other';
-    order.xtras = { ...order.xtras, wsStatus: event.status, statusTimestamp: event.statusTimestamp };
+    order.xtras = {
+      ...order.xtras,
+      wsStatus: event.status,
+      statusTimestamp: event.statusTimestamp,
+    };
     return order;
   }
 }

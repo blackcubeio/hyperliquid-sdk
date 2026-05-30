@@ -1,5 +1,5 @@
 import type { UserTrade } from '../common/types';
-import type { UserFill } from '../rest/info/get-user-fills';
+import type { UserFill } from '../common/types';
 
 /** Fill natif HL (`userFills`). */
 export type UserTradeNative = UserFill;

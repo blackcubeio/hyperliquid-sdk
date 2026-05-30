@@ -1,6 +1,6 @@
 import type { JsonValue } from '../../common/types';
+import type { UserFill } from '../../common/types';
 import { infoRequest } from '../client';
-import type { UserFill } from './get-user-fills';
 
 /** Fills d'un compte sur une fenêtre temporelle (max 500 par requête ; paginer via le dernier `time`). */
 export function getUserFillsByTime(

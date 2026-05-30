@@ -2,7 +2,7 @@ import { encode as encodeMsgpack } from '@msgpack/msgpack';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 } from '@noble/hashes/sha3';
 import { bytesToHex, concatBytes, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
-import type { Eip712Domain, Eip712Types, Signature } from './types';
+import type { Eip712Domain, Eip712Types, Signature } from '../common/types';
 
 type Action = Record<string, unknown> | unknown[];
 

@@ -1,12 +1,7 @@
+import type { GetBalancesParams } from '../common/types';
 import type { Balance } from '../common/types';
 import { BalanceConverter, type BalanceNative } from '../converters/balance';
 import { getClearinghouseStateSpot } from './info/get-clearinghouse-state-spot';
-
-/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
-export interface GetBalancesParams {
-  /** Adresse réelle du compte (master/sub), **requise** côté HL. */
-  user: string;
-}
 
 /**
  * Soldes **spot** par actif au **format unifié** `Balance` (HL `spotClearinghouseState`).

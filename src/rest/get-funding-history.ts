@@ -1,16 +1,7 @@
+import type { GetFundingHistoryParams } from '../common/types';
 import type { FundingRate, JsonValue } from '../common/types';
-import { infoRequest } from './client';
 import { FundingConverter, type FundingRateNative } from '../converters/funding';
-
-/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
-export interface GetFundingHistoryParams {
-  /** Paire/symbole (= `Pair.name`, coin HL). */
-  name: string;
-  /** Début (ms) — requis par HL. */
-  startTime: number;
-  /** Fin (ms). */
-  endTime?: number;
-}
+import { infoRequest } from './client';
 
 /** Historique du **taux de funding** au format unifié (HL `fundingHistory`). */
 export function getFundingHistory(

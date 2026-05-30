@@ -1,5 +1,6 @@
+import type { WithdrawParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const WITHDRAW_TYPES: Eip712Types = {
   'HyperliquidTransaction:Withdraw': [
@@ -9,25 +10,6 @@ export const WITHDRAW_TYPES: Eip712Types = {
     { name: 'time', type: 'uint64' },
   ],
 };
-
-/**
- * Paramètres unifiés de retrait (mêmes champs sur les 3 SDK ; chaque exchange lit ce qu'il
- * lui faut). HL : `address` = destination (requise), `amount` en USDC vers Arbitrum.
- */
-export interface WithdrawParams {
-  /** Montant USDC (chaîne). */
-  amount: string;
-  /** Adresse de destination (requise côté HL). */
-  address?: string;
-  /** Actif (Aster). */
-  asset?: string;
-  /** Chaîne de destination (Aster). */
-  chainId?: string;
-  /** Frais (Aster). */
-  fee?: string;
-  /** Nonce/temps (ms) ; défaut maintenant. */
-  time?: number;
-}
 
 export function buildWithdrawAction(params: WithdrawParams, time: number) {
   return {

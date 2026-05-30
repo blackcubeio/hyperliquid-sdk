@@ -1,17 +1,5 @@
+import type { SpotBalance, SpotClearinghouseState } from '../../common/types';
 import { infoRequest } from '../client';
-
-export interface SpotBalance {
-  coin: string;
-  /** Index du token (cf. `getMetaSpot().tokens`). */
-  token: number;
-  hold: string;
-  total: string;
-  entryNtl: string;
-}
-
-export interface SpotClearinghouseState {
-  balances: SpotBalance[];
-}
 
 /**
  * Soldes **spot** d'un compte (par token : total, bloqué `hold`).

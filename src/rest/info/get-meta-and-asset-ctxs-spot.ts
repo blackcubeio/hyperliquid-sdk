@@ -1,23 +1,7 @@
+import type { SpotAssetCtx, SpotMetaAndAssetCtxs } from '../../common/types';
+import type { SpotMeta, SpotPair, SpotToken } from '../../common/types';
 import { infoRequest } from '../client';
-import { type SpotMeta, type SpotPair, type SpotToken, tagSpotMeta } from './get-meta-spot';
-
-export interface SpotAssetCtx {
-  prevDayPx: string;
-  dayNtlVlm: string;
-  markPx: string;
-  midPx: string | null;
-  circulatingSupply: string;
-  coin: string;
-  totalSupply: string;
-  dayBaseVlm: string;
-}
-
-/**
- * `[metaSpot, contextes]` : l'univers spot + les contextes (mark/mid price, volumes, supply) par
- * paire. Le contexte porte son `coin` ; la liste des contextes n'est pas strictement alignée sur
- * `universe` (matcher par `coin`).
- */
-export type SpotMetaAndAssetCtxs = [SpotMeta, SpotAssetCtx[]];
+import { tagSpotMeta } from './get-meta-spot';
 
 type SpotMetaWire = { tokens: SpotToken[]; universe: Omit<SpotPair, 'kind'>[] };
 

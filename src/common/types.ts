@@ -323,3 +323,544 @@ export interface Signer {
   /** Adresse de vault / sub-account (0x…) incluse dans les actions L1 signées. */
   vaultAddress?: `0x${string}`;
 }
+
+// ── depuis rest/cancel-all-orders.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK ; HL requiert `user`). */
+export interface CancelAllOrdersParams {
+  /** Adresse réelle du compte (requise côté HL). */
+  user: string;
+  /** Paire/symbole (= `Pair.name`) ; tous les marchés si omis. */
+  name?: string;
+  /** Type de marché ; défaut `perp`. */
+  kind?: MarketKind;
+}
+
+/** Résultat unifié d'une annulation globale. */
+export interface CancelAllResult {
+  /** Nombre d'ordres annulés. */
+  cancelled: number | null;
+}
+
+// ── depuis rest/cancel-order.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface CancelOrderParams {
+  /** Paire/symbole (= `Pair.name`, coin HL). */
+  name: string;
+  /** ID d'ordre exchange (oid). */
+  id: string;
+  /** Type de marché ; défaut `perp`. */
+  kind?: MarketKind;
+}
+
+// ── depuis rest/client.ts ──
+export interface ResolvedSigner {
+  label: string;
+  account: `0x${string}`;
+  privateKey: `0x${string}`;
+  network: Network;
+  vaultAddress?: `0x${string}`;
+}
+
+// ── depuis rest/edit-order.ts ──
+/**
+ * Paramètres unifiés. HL **remplace l'ordre entier** lors d'une modification → `side` requis
+ * (contrairement à Aster/Pacifica qui ne changent que prix/quantité).
+ */
+export interface EditOrderParams {
+  /** Paire/symbole (= `Pair.name`, coin HL). */
+  name: string;
+  /** Sens (requis côté HL — l'ordre est remplacé). */
+  side: Side;
+  /** Nouvelle quantité. */
+  size: string;
+  /** Nouveau prix. */
+  price: string;
+  /** ID d'ordre exchange (oid). */
+  id: string;
+  /** Reduce-only. */
+  reduceOnly?: boolean;
+  /** Type de marché ; défaut `perp`. */
+  kind?: MarketKind;
+}
+
+/** Résultat unifié d'une modification d'ordre (référence du nouvel ordre). */
+export interface EditOrderResult {
+  name: string;
+  id: string;
+  xtras?: Record<string, unknown>;
+}
+
+// ── depuis rest/exchange/approve-agent.ts ──
+export interface ApproveAgentParams {
+  /** Adresse de l'API/agent wallet à autoriser. */
+  agentAddress: `0x${string}`;
+  /** Nom de l'agent ("" pour un agent non nommé). */
+  agentName?: string;
+  nonce?: number;
+}
+
+// ── depuis rest/exchange/cancel-by-cloid.ts ──
+export interface CancelByCloidParams {
+  asset: number;
+  /** Client order ID (bytes16 hex). */
+  cloid: `0x${string}`;
+}
+
+// ── depuis rest/exchange/cancel-order.ts ──
+export interface CancelParams {
+  /** Asset ID entier. */
+  asset: number;
+  /** Order ID (oid). */
+  oid: number;
+}
+
+// ── depuis rest/exchange/modify-order.ts ──
+export interface ModifyParams {
+  /** Order ID de l'ordre à modifier. */
+  oid: number;
+  /** Nouvel ordre (remplace l'ancien). */
+  order: OrderParams;
+}
+
+// ── depuis rest/exchange/place-order.ts ──
+export type Tif = 'Gtc' | 'Ioc' | 'Alo';
+
+export interface OrderParams {
+  /** Asset ID entier (index dans `meta` pour les perps, `10000 + index` pour le spot). */
+  asset: number;
+  isBuy: boolean;
+  price: number | string;
+  size: number | string;
+  reduceOnly?: boolean;
+  /** Défaut : `Gtc`. */
+  tif?: Tif;
+  /** Client order ID (bytes16 hex, `0x…`). */
+  cloid?: `0x${string}`;
+}
+
+export interface OrderWire {
+  a: number;
+  b: boolean;
+  p: string;
+  s: string;
+  r: boolean;
+  t: { limit: { tif: Tif } };
+  c?: `0x${string}`;
+}
+
+// ── depuis rest/exchange/schedule-cancel.ts ──
+export interface ScheduleCancelParams {
+  /** Horodatage (ms) de l'annulation programmée (dead-man's switch). Omis/null = désactive. */
+  time?: number | null;
+}
+
+// ── depuis rest/exchange/spot-send.ts ──
+export interface SpotSendParams {
+  destination: `0x${string}`;
+  /** Identifiant du token au format `name:tokenId` (ex. "USDC:0x…"). */
+  token: string;
+  amount: string;
+  time?: number;
+}
+
+// ── depuis rest/exchange/update-isolated-margin.ts ──
+export interface UpdateIsolatedMarginParams {
+  asset: number;
+  /** Sens de la position (true = long). */
+  isBuy: boolean;
+  /** Marge à ajouter (négatif pour retirer), en micro-USD entier (USD × 1e6). */
+  ntli: number;
+}
+
+// ── depuis rest/exchange/update-leverage.ts ──
+/** Paramètres de l'action L1 `updateLeverage` (asset = index HL). */
+export interface LeverageActionParams {
+  asset: number;
+  /** `true` = cross, `false` = isolé. */
+  isCross: boolean;
+  leverage: number;
+}
+
+// ── depuis rest/exchange/usd-class-transfer.ts ──
+export interface UsdClassTransferParams {
+  /** Montant USDC en chaîne. */
+  amount: string;
+  /** `true` = spot → perp, `false` = perp → spot. */
+  toPerp: boolean;
+  nonce?: number;
+}
+
+// ── depuis rest/exchange/usd-send.ts ──
+export interface UsdSendParams {
+  destination: `0x${string}`;
+  /** Montant USDC en chaîne (ex. "100.5"). */
+  amount: string;
+  /** Horodatage ms (sert aussi de nonce) ; défaut `Date.now()`. */
+  time?: number;
+}
+
+// ── depuis rest/exchange/withdraw.ts ──
+/**
+ * Paramètres unifiés de retrait (mêmes champs sur les 3 SDK ; chaque exchange lit ce qu'il
+ * lui faut). HL : `address` = destination (requise), `amount` en USDC vers Arbitrum.
+ */
+export interface WithdrawParams {
+  /** Montant USDC (chaîne). */
+  amount: string;
+  /** Adresse de destination (requise côté HL). */
+  address?: string;
+  /** Actif (Aster). */
+  asset?: string;
+  /** Chaîne de destination (Aster). */
+  chainId?: string;
+  /** Frais (Aster). */
+  fee?: string;
+  /** Nonce/temps (ms) ; défaut maintenant. */
+  time?: number;
+}
+
+// ── depuis rest/get-balances.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetBalancesParams {
+  /** Adresse réelle du compte (master/sub), **requise** côté HL. */
+  user: string;
+}
+
+// ── depuis rest/get-candles.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetCandlesParams {
+  /** Identifiant de la paire (= `Pair.name`). */
+  name: string;
+  /** Intervalle (`1m`, `1h`, `1d`…). */
+  interval: string;
+  /** Début (ms). */
+  startTime: number;
+  /** Fin (ms), optionnel. */
+  endTime?: number;
+  /** Type de marché ; déduit du `name` chez HL, override possible. */
+  kind?: MarketKind;
+  /** Nombre max de bougies (ignoré par HL). */
+  limit?: number;
+}
+
+// ── depuis rest/get-funding-history.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetFundingHistoryParams {
+  /** Paire/symbole (= `Pair.name`, coin HL). */
+  name: string;
+  /** Début (ms) — requis par HL. */
+  startTime: number;
+  /** Fin (ms). */
+  endTime?: number;
+}
+
+// ── depuis rest/get-open-orders.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetOpenOrdersParams {
+  /** Adresse réelle du compte (master/sub), **requise** côté HL. */
+  user: string;
+  /** Filtre optionnel sur une paire (appliqué côté client). */
+  name?: string;
+}
+
+// ── depuis rest/get-order-book.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetOrderBookParams {
+  /** Paire/symbole (= `Pair.name`, coin HL). */
+  name: string;
+  /** Type de marché ; défaut déduit du coin. */
+  kind?: MarketKind;
+  /** Ignoré par HL (carnet complet renvoyé). */
+  limit?: number;
+}
+
+// ── depuis rest/get-positions.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetPositionsParams {
+  /** Adresse réelle du compte (master/sub), **requise** côté HL. */
+  user: string;
+  /** Filtre optionnel sur une paire (appliqué côté client). */
+  name?: string;
+}
+
+// ── depuis rest/get-user-trades.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface GetUserTradesParams {
+  /** Adresse réelle du compte (master/sub), **requise** côté HL. */
+  user: string;
+  /** Filtre optionnel sur une paire (appliqué côté client). */
+  name?: string;
+}
+
+// ── depuis rest/info/get-all-mids.ts ──
+/** Prix mid de toutes les coins, indexés par nom de coin. */
+export type AllMids = Record<string, string>;
+
+// ── depuis rest/info/get-clearinghouse-state-spot.ts ──
+export interface SpotBalance {
+  coin: string;
+  /** Index du token (cf. `getMetaSpot().tokens`). */
+  token: number;
+  hold: string;
+  total: string;
+  entryNtl: string;
+}
+
+export interface SpotClearinghouseState {
+  balances: SpotBalance[];
+}
+
+// ── depuis rest/info/get-clearinghouse-state.ts ──
+export interface MarginSummary {
+  accountValue: string;
+  totalNtlPos: string;
+  totalRawUsd: string;
+  totalMarginUsed: string;
+}
+
+export interface PositionLeverage {
+  type: string;
+  value: number;
+  rawUsd?: string;
+}
+
+export interface PositionCumFunding {
+  allTime: string;
+  sinceOpen: string;
+  sinceChange: string;
+}
+
+/** Position perp native HL (utilisée par `getClearinghouseState`, spécifique). */
+export interface PerpPosition {
+  coin: string;
+  szi: string;
+  entryPx?: string;
+  positionValue: string;
+  unrealizedPnl: string;
+  returnOnEquity: string;
+  leverage: PositionLeverage;
+  liquidationPx: string | null;
+  marginUsed: string;
+  maxLeverage: number;
+  cumFunding: PositionCumFunding;
+}
+
+export interface AssetPosition {
+  type: string;
+  position: PerpPosition;
+}
+
+export interface ClearinghouseState {
+  marginSummary: MarginSummary;
+  crossMarginSummary: MarginSummary;
+  crossMaintenanceMarginUsed: string;
+  withdrawable: string;
+  assetPositions: AssetPosition[];
+  time: number;
+}
+
+// ── depuis rest/info/get-frontend-open-orders.ts ──
+export interface FrontendOrder {
+  coin: string;
+  limitPx: string;
+  oid: number;
+  side: string;
+  sz: string;
+  timestamp: number;
+  origSz: string;
+  orderType: string;
+  reduceOnly?: boolean;
+  tif?: string | null;
+  cloid?: string | null;
+  isPositionTpsl?: boolean;
+  isTrigger?: boolean;
+  triggerPx?: string;
+  triggerCondition?: string;
+}
+
+// ── depuis rest/info/get-meta-and-asset-ctxs-spot.ts ──
+export interface SpotAssetCtx {
+  prevDayPx: string;
+  dayNtlVlm: string;
+  markPx: string;
+  midPx: string | null;
+  circulatingSupply: string;
+  coin: string;
+  totalSupply: string;
+  dayBaseVlm: string;
+}
+
+/**
+ * `[metaSpot, contextes]` : l'univers spot + les contextes (mark/mid price, volumes, supply) par
+ * paire. Le contexte porte son `coin` ; la liste des contextes n'est pas strictement alignée sur
+ * `universe` (matcher par `coin`).
+ */
+export type SpotMetaAndAssetCtxs = [SpotMeta, SpotAssetCtx[]];
+
+// ── depuis rest/info/get-meta-and-asset-ctxs.ts ──
+export interface AssetCtx {
+  funding: string;
+  openInterest: string;
+  prevDayPx: string;
+  dayNtlVlm: string;
+  premium: string | null;
+  oraclePx: string;
+  markPx: string;
+  midPx: string | null;
+  impactPxs: string[] | null;
+}
+
+/** `[meta, contextes]` : l'univers + les contextes (mark price, funding, OI…) par actif, alignés par index. */
+export type MetaAndAssetCtxs = [Meta, AssetCtx[]];
+
+// ── depuis rest/info/get-meta-spot.ts ──
+export interface SpotToken {
+  name: string;
+  szDecimals: number;
+  weiDecimals: number;
+  index: number;
+  tokenId: string;
+  isCanonical: boolean;
+  evmContract: string | null;
+  fullName: string | null;
+}
+
+export interface SpotPair {
+  name: string;
+  /** `[baseTokenIndex, quoteTokenIndex]`. */
+  tokens: [number, number];
+  index: number;
+  isCanonical: boolean;
+  /** Toujours `'spot'` ici — distingue des perpetuals lors d'une fusion. */
+  kind: MarketKind;
+}
+
+export interface SpotMeta {
+  tokens: SpotToken[];
+  universe: SpotPair[];
+}
+
+// ── depuis rest/info/get-meta.ts ──
+export interface AssetMeta {
+  name: string;
+  szDecimals: number;
+  maxLeverage: number;
+  onlyIsolated?: boolean;
+  isDelisted?: boolean;
+  /** Toujours `'perp'` ici — distingue des paires spot lors d'une fusion. */
+  kind: MarketKind;
+}
+
+export interface Meta {
+  universe: AssetMeta[];
+  marginTables?: unknown[];
+}
+
+// ── depuis rest/info/get-open-orders.ts ──
+/** Ordre ouvert natif HL (`openOrders`) — type consommé par `getOpenOrders` unifié. */
+export interface OpenOrder {
+  coin: string;
+  limitPx: string;
+  oid: number;
+  side: string;
+  sz: string;
+  timestamp: number;
+  origSz?: string;
+  cloid?: string;
+}
+
+// ── depuis rest/info/get-order-status.ts ──
+export interface OrderStatusResponse {
+  /** "order" si trouvé, sinon "unknownOid". */
+  status: string;
+  order?: unknown;
+}
+
+// ── depuis rest/info/get-user-fills.ts ──
+/** Fill natif HL (`userFills`) — type consommé par `getUserTrades` unifié et `getUserFillsByTime`. */
+export interface UserFill {
+  coin: string;
+  px: string;
+  sz: string;
+  side: string;
+  time: number;
+  startPosition: string;
+  dir: string;
+  closedPnl: string;
+  hash: string;
+  oid: number;
+  crossed: boolean;
+  fee: string;
+  tid: number;
+  feeToken: string;
+}
+
+// ── depuis rest/place-order.ts ──
+/** Type d'ordre unifié supporté par HL (`placeOrder`). */
+export type PlaceOrderType = 'limit' | 'market';
+
+/** Time-in-force unifié. */
+export type PlaceOrderTif = 'gtc' | 'ioc' | 'fok' | 'alo';
+
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface PlaceOrderParams {
+  /** Paire/symbole (= `Pair.name`, coin HL). */
+  name: string;
+  /** Type de marché ; défaut `perp`. */
+  kind?: MarketKind;
+  /** Sens. */
+  side: Side;
+  /** Type d'ordre (`limit` ou `market` = IOC borné par `price`). */
+  type: PlaceOrderType;
+  /** Quantité (chaîne décimale). */
+  size: string;
+  /** Prix (limite, ou borne de slippage pour `market` — requis côté HL). */
+  price: string;
+  /** Time-in-force (limit). */
+  tif?: PlaceOrderTif;
+  /** Reduce-only. */
+  reduceOnly?: boolean;
+  /** Client order id (bytes16 hex `0x…`). */
+  clientId?: `0x${string}`;
+}
+
+// ── depuis rest/types.ts ──
+export interface Signature {
+  r: `0x${string}`;
+  s: `0x${string}`;
+  v: number;
+}
+
+export interface Eip712Field {
+  name: string;
+  type: string;
+}
+
+export type Eip712Types = Record<string, readonly Eip712Field[]>;
+
+export interface Eip712Domain {
+  name: string;
+  version: string;
+  chainId: number;
+  verifyingContract: `0x${string}`;
+}
+
+// ── depuis rest/update-leverage.ts ──
+/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
+export interface UpdateLeverageParams {
+  /** Paire/symbole (= `Pair.name`, coin HL). */
+  name: string;
+  /** Levier cible (entier). */
+  leverage: number;
+  /** Type de marché ; défaut `perp`. */
+  kind?: MarketKind;
+  /** Mode cross (`true`, défaut) ou isolé (`false`) — spécifique HL. */
+  isCross?: boolean;
+}
+
+/** Confirmation unifiée d'un changement de levier. */
+export interface LeverageUpdate {
+  name: string;
+  leverage: number;
+  xtras?: Record<string, unknown>;
+}

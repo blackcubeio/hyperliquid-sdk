@@ -1,12 +1,21 @@
-import type { Candle, MarketKind, Order, OrderBook, Price, Trade, UserTrade } from '../common/types';
-import { type CandleNative, CandleConverter } from '../converters/candle';
-import { type OrderBookNative, OrderBookConverter } from '../converters/order-book';
-import { type UserTradeNative, UserTradeConverter } from '../converters/user-trade';
-import { type BboWsNative, BboWsConverter } from '../converters/bbo';
+import type {
+  Candle,
+  MarketKind,
+  Order,
+  OrderBook,
+  Price,
+  Trade,
+  UserTrade,
+} from '../common/types';
+import type { Unsubscribe, WsClientOptions } from '../common/ws';
+import { BboWsConverter, type BboWsNative } from '../converters/bbo';
+import { CandleConverter, type CandleNative } from '../converters/candle';
 import { type OrderUpdateWsNative, OrderWsConverter } from '../converters/order';
+import { OrderBookConverter, type OrderBookNative } from '../converters/order-book';
 import { type AllMidsWsNative, PricesWsConverter } from '../converters/price';
-import { type TradeWsNative, TradeWsConverter } from '../converters/trade';
-import { WsClient, type Unsubscribe, type WsClientOptions } from './client';
+import { TradeWsConverter, type TradeWsNative } from '../converters/trade';
+import { UserTradeConverter, type UserTradeNative } from '../converters/user-trade';
+import { WsClient } from './client';
 
 /**
  * Client WebSocket **unifié Blackcube** : surface identique entre les SDK. Chaque méthode
@@ -44,10 +53,7 @@ export class UnifiedWsClient {
   }
 
   /** Trades publics temps réel : le handler est appelé **une fois par trade**. */
-  public subscribeTrades(
-    params: { name: string },
-    handler: (trade: Trade) => void,
-  ): Unsubscribe {
+  public subscribeTrades(params: { name: string }, handler: (trade: Trade) => void): Unsubscribe {
     const converter = new TradeWsConverter();
     return this.client.subscribeTrades({ coin: params.name }, (raw) => {
       for (const native of raw as unknown as TradeWsNative[]) {
@@ -90,10 +96,7 @@ export class UnifiedWsClient {
    * Mises à jour d'ordres du compte (user-data) : le handler est appelé **une fois par ordre**.
    * `user` (adresse du compte) est **requis** côté Hyperliquid.
    */
-  public subscribeOrders(
-    params: { user?: string },
-    handler: (order: Order) => void,
-  ): Unsubscribe {
+  public subscribeOrders(params: { user?: string }, handler: (order: Order) => void): Unsubscribe {
     if (params.user === undefined) {
       throw new Error('subscribeOrders: `user` (adresse du compte) est requis sur Hyperliquid');
     }

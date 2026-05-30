@@ -1,35 +1,10 @@
+import type { PlaceOrderParams, PlaceOrderTif, PlaceOrderType } from '../common/types';
 import type { MarketKind, Order, Side } from '../common/types';
+import type { Tif } from '../common/types';
 import { assetIndex } from '../common/utils';
 import { exchangeL1Action } from './client';
-import { type Tif, buildOrderAction } from './exchange/place-order';
+import { buildOrderAction } from './exchange/place-order';
 import { getMeta } from './info/get-meta';
-
-/** Type d'ordre unifié supporté par HL (`placeOrder`). */
-export type PlaceOrderType = 'limit' | 'market';
-/** Time-in-force unifié. */
-export type PlaceOrderTif = 'gtc' | 'ioc' | 'fok' | 'alo';
-
-/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
-export interface PlaceOrderParams {
-  /** Paire/symbole (= `Pair.name`, coin HL). */
-  name: string;
-  /** Type de marché ; défaut `perp`. */
-  kind?: MarketKind;
-  /** Sens. */
-  side: Side;
-  /** Type d'ordre (`limit` ou `market` = IOC borné par `price`). */
-  type: PlaceOrderType;
-  /** Quantité (chaîne décimale). */
-  size: string;
-  /** Prix (limite, ou borne de slippage pour `market` — requis côté HL). */
-  price: string;
-  /** Time-in-force (limit). */
-  tif?: PlaceOrderTif;
-  /** Reduce-only. */
-  reduceOnly?: boolean;
-  /** Client order id (bytes16 hex `0x…`). */
-  clientId?: `0x${string}`;
-}
 
 const TIF: Record<PlaceOrderTif, Tif> = { gtc: 'Gtc', ioc: 'Ioc', fok: 'Ioc', alo: 'Alo' };
 

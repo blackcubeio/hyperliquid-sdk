@@ -1,22 +1,14 @@
 import { type WebSocketFactory, type WebSocketLike, getConfig } from '../common/config';
 import type { JsonObject, JsonValue } from '../common/types';
+import type { CancelParams } from '../common/types';
+import type { ModifyParams } from '../common/types';
+import type { OrderParams } from '../common/types';
+import type { StreamHandler, Unsubscribe, WsClientOptions } from '../common/ws';
 import { resolveReadNetwork, resolveSigner } from '../rest/client';
-import { type CancelParams, buildCancelAction } from '../rest/exchange/cancel-order';
-import { type ModifyParams, buildModifyAction } from '../rest/exchange/modify-order';
-import { type OrderParams, buildOrderAction } from '../rest/exchange/place-order';
+import { buildCancelAction } from '../rest/exchange/cancel-order';
+import { buildModifyAction } from '../rest/exchange/modify-order';
+import { buildOrderAction } from '../rest/exchange/place-order';
 import { signL1Action } from '../rest/signing';
-
-export type StreamHandler = (data: JsonValue) => void;
-export type Unsubscribe = () => void;
-
-export interface WsClientOptions {
-  /** Label du signer (cf. init) : choisit le réseau du socket et signe les actions WS. */
-  label?: string;
-  url?: string;
-  webSocket?: WebSocketFactory;
-  /** Intervalle du ping (ms). HL ferme les connexions inactives après ~60 s. Défaut 50 s. */
-  heartbeatIntervalMs?: number;
-}
 
 interface PendingPost {
   resolve: (value: JsonValue) => void;

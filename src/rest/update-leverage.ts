@@ -1,27 +1,9 @@
+import type { LeverageUpdate, UpdateLeverageParams } from '../common/types';
 import type { MarketKind } from '../common/types';
 import { assetIndex } from '../common/utils';
 import { exchangeL1Action } from './client';
 import { buildUpdateLeverageAction } from './exchange/update-leverage';
 import { getMeta } from './info/get-meta';
-
-/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
-export interface UpdateLeverageParams {
-  /** Paire/symbole (= `Pair.name`, coin HL). */
-  name: string;
-  /** Levier cible (entier). */
-  leverage: number;
-  /** Type de marché ; défaut `perp`. */
-  kind?: MarketKind;
-  /** Mode cross (`true`, défaut) ou isolé (`false`) — spécifique HL. */
-  isCross?: boolean;
-}
-
-/** Confirmation unifiée d'un changement de levier. */
-export interface LeverageUpdate {
-  name: string;
-  leverage: number;
-  xtras?: Record<string, unknown>;
-}
 
 /**
  * Met à jour le levier d'une coin (**écriture signée**, HL `/exchange`).

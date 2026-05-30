@@ -1,10 +1,5 @@
+import type { CancelByCloidParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-
-export interface CancelByCloidParams {
-  asset: number;
-  /** Client order ID (bytes16 hex). */
-  cloid: `0x${string}`;
-}
 
 /** Construit l'action L1 `cancelByCloid` (clés `asset`/`cloid`, non abrégées). */
 export function buildCancelByCloidAction(cancels: CancelByCloidParams[]): Record<string, unknown> {
