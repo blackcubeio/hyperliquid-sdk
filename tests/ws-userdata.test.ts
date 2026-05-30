@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { init } from '../src/common/config';
-import type { Order } from '../src/common/types';
+import type { Order, UserTrade } from '../src/common/types';
 import { assetIndex } from '../src/common/utils';
 import { cancelOrdersByCloid } from '../src/rest/exchange/cancel-by-cloid';
-import { createLimitOrder } from '../src/rest/exchange/place-order';
+import { createLimitOrder, createMarketOrder } from '../src/rest/exchange/place-order';
 import { getAllMids } from '../src/rest/info/get-all-mids';
 import { getMeta } from '../src/rest/info/get-meta';
 import { UnifiedWsClient } from '../src/ws/unified-client';
@@ -62,6 +62,42 @@ describe.skipIf(!ready)('UnifiedWsClient HL user-data (testnet réel)', () => {
       }
     },
     40_000,
+  );
+
+  it(
+    'subscribeUserTrades délivre un UserTrade unifié sur un fill',
+    async () => {
+      const meta = await getMeta(undefined, 'trader');
+      const asset = assetIndex(meta.universe, 'BTC');
+      const mids = await getAllMids(undefined, 'trader');
+      const mark = Number(mids.BTC);
+      const fills: UserTrade[] = [];
+      const client = new UnifiedWsClient({ label: 'trader' });
+      await client.connect();
+      try {
+        client.subscribeUserTrades({ user: account }, (t) => fills.push(t));
+        await new Promise((r) => setTimeout(r, 1500));
+        await createMarketOrder(
+          { asset, isBuy: true, price: Math.round(mark * 1.03), size: 0.001 },
+          'trader',
+        );
+        const fill = await waitFor(fills, (t) => t.name === 'BTC' && Number(t.time) > 0, 20_000);
+        expect(fill.kind).toBe('perp');
+        expect(typeof fill.id).toBe('string');
+        expect(typeof fill.orderId).toBe('string');
+        expect(['buy', 'sell']).toContain(fill.side);
+        expect(typeof fill.price).toBe('string');
+        expect(typeof fill.fee).toBe('string');
+        expect(typeof fill.maker).toBe('boolean');
+      } finally {
+        await createMarketOrder(
+          { asset, isBuy: false, price: Math.round(mark * 0.97), size: 0.001, reduceOnly: true },
+          'trader',
+        ).catch(() => {});
+        client.disconnect();
+      }
+    },
+    45_000,
   );
 });
 

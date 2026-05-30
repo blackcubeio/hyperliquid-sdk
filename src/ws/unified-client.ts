@@ -1,6 +1,7 @@
-import type { Candle, MarketKind, Order, OrderBook, Price, Trade } from '../common/types';
+import type { Candle, MarketKind, Order, OrderBook, Price, Trade, UserTrade } from '../common/types';
 import { type CandleNative, CandleConverter } from '../rest/converters/candle';
 import { type OrderBookNative, OrderBookConverter } from '../rest/converters/order-book';
+import { type UserTradeNative, UserTradeConverter } from '../rest/converters/user-trade';
 import { type BboWsNative, BboWsConverter } from './converters/bbo';
 import { type OrderUpdateWsNative, OrderWsConverter } from './converters/order';
 import { type AllMidsWsNative, PricesWsConverter } from './converters/prices';
@@ -100,6 +101,27 @@ export class UnifiedWsClient {
     return this.client.subscribeOrderUpdates({ user: params.user as `0x${string}` }, (raw) => {
       for (const event of raw as unknown as OrderUpdateWsNative[]) {
         handler(converter.toCommon(event));
+      }
+    });
+  }
+
+  /**
+   * Fills du compte (user-data) : le handler est appelé **une fois par fill** (snapshot inclus).
+   * `user` (adresse du compte) est **requis** côté Hyperliquid. Réutilise le converter REST
+   * (le `fill` WS a la forme du natif REST `UserFill`).
+   */
+  public subscribeUserTrades(
+    params: { user?: string },
+    handler: (trade: UserTrade) => void,
+  ): Unsubscribe {
+    if (params.user === undefined) {
+      throw new Error('subscribeUserTrades: `user` (adresse du compte) est requis sur Hyperliquid');
+    }
+    const converter = new UserTradeConverter();
+    return this.client.subscribeUserFills({ user: params.user as `0x${string}` }, (raw) => {
+      const fills = (raw as { fills?: UserTradeNative[] }).fills ?? [];
+      for (const fill of fills) {
+        handler(converter.toCommon(fill));
       }
     });
   }
