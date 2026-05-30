@@ -1,26 +1,17 @@
-import { exchangeL1Action } from '../client';
-
-export interface UpdateLeverageParams {
+/** Paramètres de l'action L1 `updateLeverage` (asset = index HL). */
+export interface LeverageActionParams {
   asset: number;
   /** `true` = cross, `false` = isolé. */
   isCross: boolean;
   leverage: number;
 }
 
-/** Construit l'action L1 `updateLeverage`. */
-export function buildUpdateLeverageAction(params: UpdateLeverageParams): Record<string, unknown> {
+/** Construit l'action L1 `updateLeverage` (utilisée par le `updateLeverage` unifié). */
+export function buildUpdateLeverageAction(params: LeverageActionParams): Record<string, unknown> {
   return {
     type: 'updateLeverage',
     asset: params.asset,
     isCross: params.isCross,
     leverage: params.leverage,
   };
-}
-
-/** Met à jour le levier d'un actif (signé, `/exchange`). */
-export function updateLeverage<TResponse = unknown>(
-  params: UpdateLeverageParams,
-  label: string,
-): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateLeverageAction(params), label);
 }
