@@ -1,5 +1,7 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { SpotSendParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const SPOT_SEND_TYPES: Eip712Types = {
   'HyperliquidTransaction:SpotSend': [
@@ -10,14 +12,6 @@ export const SPOT_SEND_TYPES: Eip712Types = {
     { name: 'time', type: 'uint64' },
   ],
 };
-
-export interface SpotSendParams {
-  destination: `0x${string}`;
-  /** Identifiant du token au format `name:tokenId` (ex. "USDC:0x…"). */
-  token: string;
-  amount: string;
-  time?: number;
-}
 
 export function buildSpotSendAction(params: SpotSendParams, time: number) {
   return {
@@ -32,11 +26,12 @@ export function buildSpotSendAction(params: SpotSendParams, time: number) {
 
 /** Transfert d'un token spot vers un autre compte (user-signed). */
 export function spotSend<TResponse = unknown>(
+  client: HyperliquidClient,
   params: SpotSendParams,
   label: string,
 ): Promise<TResponse> {
   const time = params.time ?? Date.now();
-  return userSignedRequest<TResponse>({
+  return userSignedRequest<TResponse>(client, {
     action: buildSpotSendAction(params, time),
     types: SPOT_SEND_TYPES,
     nonce: time,

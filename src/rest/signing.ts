@@ -2,7 +2,7 @@ import { encode as encodeMsgpack } from '@msgpack/msgpack';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 } from '@noble/hashes/sha3';
 import { bytesToHex, concatBytes, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
-import type { Eip712Domain, Eip712Types, Signature } from './types';
+import type { Eip712Domain, Eip712Types, Signature } from '../common/types';
 
 type Action = Record<string, unknown> | unknown[];
 
@@ -214,4 +214,23 @@ export function signUserSignedAction(args: {
 export function privateKeyToAddress(privateKey: `0x${string}`): `0x${string}` {
   const publicKey = secp256k1.getPublicKey(hexToBytes(privateKey.slice(2)), false);
   return `0x${bytesToHex(keccak_256(publicKey.slice(1)).slice(12))}`;
+}
+
+/**
+ * Type de clé : `0x…` → EVM (secp256k1). Hyperliquid est **EVM-only** ; cette fonction fait
+ * partie du contrat commun (`KeyHelper`) et renvoie toujours `evm` pour une clé HL valide.
+ */
+export function keyTypeOf(privateKey: string): 'evm' | 'solana' {
+  return privateKey.startsWith('0x') ? 'evm' : 'solana';
+}
+
+/** Adresse EVM en casse **EIP-55** (checksum) à partir d'une adresse `0x…`. */
+export function toChecksumAddress(address: string): `0x${string}` {
+  const lower = address.toLowerCase().replace(/^0x/, '');
+  const hash = bytesToHex(keccak_256(utf8ToBytes(lower)));
+  let result = '0x';
+  for (let i = 0; i < lower.length; i++) {
+    result += Number.parseInt(hash[i] as string, 16) >= 8 ? lower[i]?.toUpperCase() : lower[i];
+  }
+  return result as `0x${string}`;
 }

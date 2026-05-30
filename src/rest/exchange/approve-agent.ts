@@ -1,5 +1,7 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { ApproveAgentParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const APPROVE_AGENT_TYPES: Eip712Types = {
   'HyperliquidTransaction:ApproveAgent': [
@@ -9,14 +11,6 @@ export const APPROVE_AGENT_TYPES: Eip712Types = {
     { name: 'nonce', type: 'uint64' },
   ],
 };
-
-export interface ApproveAgentParams {
-  /** Adresse de l'API/agent wallet à autoriser. */
-  agentAddress: `0x${string}`;
-  /** Nom de l'agent ("" pour un agent non nommé). */
-  agentName?: string;
-  nonce?: number;
-}
 
 export function buildApproveAgentAction(params: ApproveAgentParams, nonce: number) {
   return {
@@ -30,11 +24,12 @@ export function buildApproveAgentAction(params: ApproveAgentParams, nonce: numbe
 
 /** Autorise une API/agent wallet à signer pour le compte (user-signed). */
 export function approveAgent<TResponse = unknown>(
+  client: HyperliquidClient,
   params: ApproveAgentParams,
   label: string,
 ): Promise<TResponse> {
   const nonce = params.nonce ?? Date.now();
-  return userSignedRequest<TResponse>({
+  return userSignedRequest<TResponse>(client, {
     action: buildApproveAgentAction(params, nonce),
     types: APPROVE_AGENT_TYPES,
     nonce,

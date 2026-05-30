@@ -1,12 +1,7 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { ModifyParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-import { type OrderParams, buildOrderWire } from './place-order';
-
-export interface ModifyParams {
-  /** Order ID de l'ordre à modifier. */
-  oid: number;
-  /** Nouvel ordre (remplace l'ancien). */
-  order: OrderParams;
-}
+import { buildOrderWire } from './place-order';
 
 /** Construit l'action L1 `modify`. */
 export function buildModifyAction(params: ModifyParams): Record<string, unknown> {
@@ -25,18 +20,11 @@ export function buildBatchModifyAction(modifies: ModifyParams[]): Record<string,
   };
 }
 
-/** Modifie un ordre existant (signé, `/exchange`). */
-export function editOrder<TResponse = unknown>(
-  params: ModifyParams,
-  label: string,
-): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildModifyAction(params), label);
-}
-
 /** Modifie plusieurs ordres dans une seule action (signé, `/exchange`). */
 export function batchModifyOrders<TResponse = unknown>(
+  client: HyperliquidClient,
   modifies: ModifyParams[],
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildBatchModifyAction(modifies), label);
+  return exchangeL1Action<TResponse>(client, buildBatchModifyAction(modifies), label);
 }

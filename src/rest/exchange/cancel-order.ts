@@ -1,11 +1,6 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { CancelParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-
-export interface CancelParams {
-  /** Asset ID entier. */
-  asset: number;
-  /** Order ID (oid). */
-  oid: number;
-}
 
 /** Construit l'action L1 `cancel`. Exporté pour test/inspection sans envoi réseau. */
 export function buildCancelAction(cancels: CancelParams[]): Record<string, unknown> {
@@ -15,18 +10,11 @@ export function buildCancelAction(cancels: CancelParams[]): Record<string, unkno
   };
 }
 
-/** Annule un ordre par `oid` (signé, `/exchange`). */
-export function cancelOrder<TResponse = unknown>(
-  cancel: CancelParams,
-  label: string,
-): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelAction([cancel]), label);
-}
-
 /** Annule plusieurs ordres par `oid` dans une seule action (signé, `/exchange`). */
 export function cancelOrders<TResponse = unknown>(
+  client: HyperliquidClient,
   cancels: CancelParams[],
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelAction(cancels), label);
+  return exchangeL1Action<TResponse>(client, buildCancelAction(cancels), label);
 }

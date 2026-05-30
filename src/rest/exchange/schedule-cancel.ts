@@ -1,9 +1,6 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { ScheduleCancelParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-
-export interface ScheduleCancelParams {
-  /** Horodatage (ms) de l'annulation programmée (dead-man's switch). Omis/null = désactive. */
-  time?: number | null;
-}
 
 /** Construit l'action L1 `scheduleCancel`. */
 export function buildScheduleCancelAction(
@@ -18,8 +15,9 @@ export function buildScheduleCancelAction(
 
 /** Programme (ou désactive) l'annulation automatique de tous les ordres (signé, `/exchange`). */
 export function scheduleCancel<TResponse = unknown>(
+  client: HyperliquidClient,
   params: ScheduleCancelParams,
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildScheduleCancelAction(params), label);
+  return exchangeL1Action<TResponse>(client, buildScheduleCancelAction(params), label);
 }

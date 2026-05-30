@@ -1,21 +1,16 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { AssetCtx, MetaAndAssetCtxs } from '../../common/types';
+import type { AssetMeta } from '../../common/types';
 import { infoRequest } from '../client';
-import type { Meta } from './get-meta';
+import { tagPerpMeta } from './get-meta';
 
-export interface AssetCtx {
-  funding: string;
-  openInterest: string;
-  prevDayPx: string;
-  dayNtlVlm: string;
-  premium: string | null;
-  oraclePx: string;
-  markPx: string;
-  midPx: string | null;
-  impactPxs: string[] | null;
-}
+type MetaWire = { universe: Omit<AssetMeta, 'kind'>[]; marginTables?: unknown[] };
 
-/** `[meta, contextes]` : l'univers + les contextes (mark price, funding, OI…) par actif, alignés par index. */
-export type MetaAndAssetCtxs = [Meta, AssetCtx[]];
-
-export function getMetaAndAssetCtxs(label?: string): Promise<MetaAndAssetCtxs> {
-  return infoRequest<MetaAndAssetCtxs>({ type: 'metaAndAssetCtxs' }, label);
+export function getMetaAndAssetCtxs(
+  client: HyperliquidClient,
+  label?: string,
+): Promise<MetaAndAssetCtxs> {
+  return infoRequest<[MetaWire, AssetCtx[]]>(client, { type: 'metaAndAssetCtxs' }, label).then(
+    ([meta, ctxs]) => [tagPerpMeta(meta), ctxs],
+  );
 }

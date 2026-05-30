@@ -1,5 +1,7 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { WithdrawParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const WITHDRAW_TYPES: Eip712Types = {
   'HyperliquidTransaction:Withdraw': [
@@ -10,30 +12,24 @@ export const WITHDRAW_TYPES: Eip712Types = {
   ],
 };
 
-export interface WithdrawParams {
-  destination: `0x${string}`;
-  /** Montant USDC en chaîne. */
-  amount: string;
-  time?: number;
-}
-
 export function buildWithdrawAction(params: WithdrawParams, time: number) {
   return {
     type: 'withdraw3',
     signatureChainId: '0x66eee' as const,
-    destination: params.destination,
+    destination: params.address as `0x${string}`,
     amount: params.amount,
     time,
   };
 }
 
-/** Retrait d'USDC vers Arbitrum (user-signed). */
+/** Retrait d'USDC vers Arbitrum (**user-signed**). `address` = destination. */
 export function withdraw<TResponse = unknown>(
+  client: HyperliquidClient,
   params: WithdrawParams,
   label: string,
 ): Promise<TResponse> {
   const time = params.time ?? Date.now();
-  return userSignedRequest<TResponse>({
+  return userSignedRequest<TResponse>(client, {
     action: buildWithdrawAction(params, time),
     types: WITHDRAW_TYPES,
     nonce: time,
