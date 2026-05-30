@@ -15,6 +15,7 @@ export * from './rest/get-balances';
 export * from './rest/get-positions';
 export * from './rest/get-open-orders';
 export * from './rest/get-user-trades';
+export * from './rest/update-leverage';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
