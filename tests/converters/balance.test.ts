@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Balance } from '../../src/common/types';
-import { BalanceConverter, type BalanceNative } from '../../src/rest/converters/balance';
+import { BalanceConverter, type BalanceNative } from '../../src/converters/balance';
 
 const BALANCE_CORE_KEYS = ['asset', 'available', 'total', 'usdValue'];
 

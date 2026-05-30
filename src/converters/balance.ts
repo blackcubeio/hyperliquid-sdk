@@ -1,5 +1,5 @@
-import type { Balance } from '../../common/types';
-import type { SpotBalance } from '../info/get-clearinghouse-state-spot';
+import type { Balance } from '../common/types';
+import type { SpotBalance } from '../rest/info/get-clearinghouse-state-spot';
 
 /** Solde spot natif HL (`spotClearinghouseState`). */
 export type BalanceNative = SpotBalance;

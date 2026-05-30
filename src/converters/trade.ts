@@ -1,4 +1,4 @@
-import type { Trade } from '../../common/types';
+import type { Trade } from '../common/types';
 
 /**
  * Payload WS `trades` Hyperliquid — array d'éléments `{coin, side, px, sz, time, hash, tid, users}`.

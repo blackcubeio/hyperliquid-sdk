@@ -1,5 +1,5 @@
 import type { Price } from '../common/types';
-import { PriceConverter } from './converters/price';
+import { PriceConverter } from '../converters/price';
 import { getMetaAndAssetCtxs } from './info/get-meta-and-asset-ctxs';
 
 /**

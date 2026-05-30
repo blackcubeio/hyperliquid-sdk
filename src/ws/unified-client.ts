@@ -1,11 +1,11 @@
 import type { Candle, MarketKind, Order, OrderBook, Price, Trade, UserTrade } from '../common/types';
-import { type CandleNative, CandleConverter } from '../rest/converters/candle';
-import { type OrderBookNative, OrderBookConverter } from '../rest/converters/order-book';
-import { type UserTradeNative, UserTradeConverter } from '../rest/converters/user-trade';
-import { type BboWsNative, BboWsConverter } from './converters/bbo';
-import { type OrderUpdateWsNative, OrderWsConverter } from './converters/order';
-import { type AllMidsWsNative, PricesWsConverter } from './converters/prices';
-import { type TradeWsNative, TradeWsConverter } from './converters/trade';
+import { type CandleNative, CandleConverter } from '../converters/candle';
+import { type OrderBookNative, OrderBookConverter } from '../converters/order-book';
+import { type UserTradeNative, UserTradeConverter } from '../converters/user-trade';
+import { type BboWsNative, BboWsConverter } from '../converters/bbo';
+import { type OrderUpdateWsNative, OrderWsConverter } from '../converters/order';
+import { type AllMidsWsNative, PricesWsConverter } from '../converters/price';
+import { type TradeWsNative, TradeWsConverter } from '../converters/trade';
 import { WsClient, type Unsubscribe, type WsClientOptions } from './client';
 
 /**

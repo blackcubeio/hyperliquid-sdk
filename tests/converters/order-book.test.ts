@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OrderBook } from '../../src/common/types';
-import { OrderBookConverter, type OrderBookNative } from '../../src/rest/converters/order-book';
+import { OrderBookConverter, type OrderBookNative } from '../../src/converters/order-book';
 
 const WIRE: OrderBookNative = {
   coin: 'BTC',

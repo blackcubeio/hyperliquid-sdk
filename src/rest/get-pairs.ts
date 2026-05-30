@@ -1,5 +1,5 @@
 import type { Pair } from '../common/types';
-import { PairConverter } from './converters/pair';
+import { PairConverter } from '../converters/pair';
 import { getMeta } from './info/get-meta';
 import { getMetaSpot } from './info/get-meta-spot';
 

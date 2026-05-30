@@ -1,6 +1,6 @@
-import type { Pair } from '../../common/types';
-import type { AssetMeta } from '../info/get-meta';
-import type { SpotPair, SpotToken } from '../info/get-meta-spot';
+import type { Pair } from '../common/types';
+import type { AssetMeta } from '../rest/info/get-meta';
+import type { SpotPair, SpotToken } from '../rest/info/get-meta-spot';
 
 /** Pas de quantité dérivé des décimales de taille (`10^-d`). */
 function stepFromDecimals(d: number): string {

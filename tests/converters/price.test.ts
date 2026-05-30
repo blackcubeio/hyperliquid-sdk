@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Price } from '../../src/common/types';
-import { PriceConverter, type PriceNative } from '../../src/rest/converters/price';
+import { PriceConverter, type PriceNative } from '../../src/converters/price';
 
 const WIRE: PriceNative = {
   funding: '0.0001',
