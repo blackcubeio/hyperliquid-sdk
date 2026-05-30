@@ -1,4 +1,4 @@
-import type { FundingRate } from '../../common/types';
+import type { FundingRate } from '../common/types';
 
 /** Point de funding natif HL (`fundingHistory`). */
 export interface FundingRateNative {

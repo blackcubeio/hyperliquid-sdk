@@ -1,6 +1,6 @@
 import type { JsonValue, Order } from '../common/types';
 import { infoRequest } from './client';
-import { OrderConverter, type OrderNative } from './converters/order';
+import { OrderConverter, type OrderNative } from '../converters/order';
 
 /** Paramètres unifiés (mêmes champs sur les 3 SDK). */
 export interface GetOpenOrdersParams {

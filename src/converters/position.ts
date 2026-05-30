@@ -1,5 +1,5 @@
-import type { Position } from '../../common/types';
-import type { PerpPosition } from '../info/get-clearinghouse-state';
+import type { Position } from '../common/types';
+import type { PerpPosition } from '../rest/info/get-clearinghouse-state';
 
 /** Position native HL (`clearinghouseState.assetPositions[].position`). */
 export type PositionNative = PerpPosition;

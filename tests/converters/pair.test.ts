@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Pair } from '../../src/common/types';
-import { PairConverter } from '../../src/rest/converters/pair';
+import { PairConverter } from '../../src/converters/pair';
 import type { AssetMeta } from '../../src/rest/info/get-meta';
 import type { SpotPair, SpotToken } from '../../src/rest/info/get-meta-spot';
 

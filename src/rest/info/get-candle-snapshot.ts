@@ -1,6 +1,6 @@
 import type { Candle, JsonValue, MarketKind } from '../../common/types';
 import { infoRequest } from '../client';
-import { CandleConverter, type CandleNative } from '../converters/candle';
+import { CandleConverter, type CandleNative } from '../../converters/candle';
 
 // `Candle` (format unifié) vit dans common/types ; ré-export pour compat des imports existants.
 export type { Candle };

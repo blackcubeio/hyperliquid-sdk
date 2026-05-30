@@ -1,5 +1,5 @@
 import type { Position } from '../common/types';
-import { PositionConverter, type PositionNative } from './converters/position';
+import { PositionConverter, type PositionNative } from '../converters/position';
 import { getClearinghouseState } from './info/get-clearinghouse-state';
 
 /** Paramètres unifiés (mêmes champs sur les 3 SDK). */

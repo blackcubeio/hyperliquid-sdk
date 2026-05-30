@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UserTradeConverter, type UserTradeNative } from '../../src/rest/converters/user-trade';
+import { UserTradeConverter, type UserTradeNative } from '../../src/converters/user-trade';
 
 const USER_TRADE_CORE_KEYS = [
   'fee',

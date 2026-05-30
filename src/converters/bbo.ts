@@ -1,4 +1,4 @@
-import type { MarketKind, OrderBook, OrderBookLevel } from '../../common/types';
+import type { MarketKind, OrderBook, OrderBookLevel } from '../common/types';
 
 /** Niveau BBO natif HL. */
 export interface BboLevelNative {

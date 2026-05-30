@@ -1,5 +1,5 @@
 import type { Balance } from '../common/types';
-import { BalanceConverter, type BalanceNative } from './converters/balance';
+import { BalanceConverter, type BalanceNative } from '../converters/balance';
 import { getClearinghouseStateSpot } from './info/get-clearinghouse-state-spot';
 
 /** Paramètres unifiés (mêmes champs sur les 3 SDK). */

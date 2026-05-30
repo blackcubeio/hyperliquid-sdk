@@ -1,6 +1,6 @@
 import type { JsonValue, UserTrade } from '../common/types';
 import { infoRequest } from './client';
-import { UserTradeConverter, type UserTradeNative } from './converters/user-trade';
+import { UserTradeConverter, type UserTradeNative } from '../converters/user-trade';
 
 /** Paramètres unifiés (mêmes champs sur les 3 SDK). */
 export interface GetUserTradesParams {

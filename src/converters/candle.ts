@@ -1,4 +1,4 @@
-import type { Candle, MarketKind } from '../../common/types';
+import type { Candle, MarketKind } from '../common/types';
 
 /**
  * Bougie native Hyperliquid (réponse `candleSnapshot`) — objet aux clés courtes.

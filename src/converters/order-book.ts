@@ -1,4 +1,4 @@
-import type { MarketKind, OrderBook, OrderBookLevel } from '../../common/types';
+import type { MarketKind, OrderBook, OrderBookLevel } from '../common/types';
 
 /** Niveau natif HL (`l2Book`). */
 export interface L2LevelNative {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Candle } from '../../src/common/types';
-import { CandleConverter, type CandleNative } from '../../src/rest/converters/candle';
+import { CandleConverter, type CandleNative } from '../../src/converters/candle';
 
 // Bougie native HL (réponse candleSnapshot) — objet aux clés courtes, sans extras.
 const WIRE: CandleNative = {
