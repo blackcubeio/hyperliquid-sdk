@@ -18,6 +18,7 @@ export * from './rest/get-user-trades';
 export * from './rest/update-leverage';
 export * from './rest/place-order';
 export * from './rest/cancel-order';
+export * from './rest/cancel-all-orders';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
