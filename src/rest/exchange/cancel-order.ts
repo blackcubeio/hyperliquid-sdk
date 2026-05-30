@@ -15,14 +15,6 @@ export function buildCancelAction(cancels: CancelParams[]): Record<string, unkno
   };
 }
 
-/** Annule un ordre par `oid` (signé, `/exchange`). */
-export function cancelOrder<TResponse = unknown>(
-  cancel: CancelParams,
-  label: string,
-): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildCancelAction([cancel]), label);
-}
-
 /** Annule plusieurs ordres par `oid` dans une seule action (signé, `/exchange`). */
 export function cancelOrders<TResponse = unknown>(
   cancels: CancelParams[],
