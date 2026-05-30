@@ -1,5 +1,6 @@
 import type { Candle, MarketKind, OrderBook, Trade } from '../common/types';
 import { type CandleNative, CandleConverter } from '../rest/converters/candle';
+import { type OrderBookNative, OrderBookConverter } from '../rest/converters/order-book';
 import { type BboWsNative, BboWsConverter } from './converters/bbo';
 import { type TradeWsNative, TradeWsConverter } from './converters/trade';
 import { WsClient, type Unsubscribe, type WsClientOptions } from './client';
@@ -60,6 +61,17 @@ export class UnifiedWsClient {
     const converter = new BboWsConverter(params.kind ?? 'perp');
     return this.client.subscribeBbo({ coin: params.name }, (raw) => {
       handler(converter.toCommon(raw as unknown as BboWsNative));
+    });
+  }
+
+  /** Carnet d'ordres (L2) temps réel → {@link OrderBook}. */
+  public subscribeOrderBook(
+    params: { name: string; kind?: MarketKind },
+    handler: (book: OrderBook) => void,
+  ): Unsubscribe {
+    const converter = new OrderBookConverter(params.kind ?? 'perp');
+    return this.client.subscribeL2Book({ coin: params.name }, (raw) => {
+      handler(converter.toCommon(raw as unknown as OrderBookNative));
     });
   }
 }
