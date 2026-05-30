@@ -1,5 +1,6 @@
+import type { UsdClassTransferParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const USD_CLASS_TRANSFER_TYPES: Eip712Types = {
   'HyperliquidTransaction:UsdClassTransfer': [
@@ -9,14 +10,6 @@ export const USD_CLASS_TRANSFER_TYPES: Eip712Types = {
     { name: 'nonce', type: 'uint64' },
   ],
 };
-
-export interface UsdClassTransferParams {
-  /** Montant USDC en chaîne. */
-  amount: string;
-  /** `true` = spot → perp, `false` = perp → spot. */
-  toPerp: boolean;
-  nonce?: number;
-}
 
 export function buildUsdClassTransferAction(params: UsdClassTransferParams, nonce: number) {
   return {

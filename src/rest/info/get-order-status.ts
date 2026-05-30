@@ -1,10 +1,5 @@
+import type { OrderStatusResponse } from '../../common/types';
 import { infoRequest } from '../client';
-
-export interface OrderStatusResponse {
-  /** "order" si trouvé, sinon "unknownOid". */
-  status: string;
-  order?: unknown;
-}
 
 /** Statut d'un ordre par `oid` (number) ou client order ID (hex). */
 export function getOrderStatus(

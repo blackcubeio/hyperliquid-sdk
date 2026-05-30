@@ -1,8 +1,9 @@
 import { getConfig } from '../common/config';
 import { EXCHANGE_PATH, INFO_PATH } from '../common/constants';
+import type { ResolvedSigner } from '../common/types';
 import type { JsonValue, Network } from '../common/types';
+import type { Eip712Types } from '../common/types';
 import { signL1Action, signUserSignedAction } from './signing';
-import type { Eip712Types } from './types';
 
 export class HyperliquidApiError extends Error {
   constructor(
@@ -12,14 +13,6 @@ export class HyperliquidApiError extends Error {
     super(message);
     this.name = 'HyperliquidApiError';
   }
-}
-
-export interface ResolvedSigner {
-  label: string;
-  account: `0x${string}`;
-  privateKey: `0x${string}`;
-  network: Network;
-  vaultAddress?: `0x${string}`;
 }
 
 /**

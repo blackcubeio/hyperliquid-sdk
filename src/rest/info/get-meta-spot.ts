@@ -1,31 +1,6 @@
+import type { SpotMeta, SpotPair, SpotToken } from '../../common/types';
 import type { MarketKind } from '../../common/types';
 import { infoRequest } from '../client';
-
-export interface SpotToken {
-  name: string;
-  szDecimals: number;
-  weiDecimals: number;
-  index: number;
-  tokenId: string;
-  isCanonical: boolean;
-  evmContract: string | null;
-  fullName: string | null;
-}
-
-export interface SpotPair {
-  name: string;
-  /** `[baseTokenIndex, quoteTokenIndex]`. */
-  tokens: [number, number];
-  index: number;
-  isCanonical: boolean;
-  /** Toujours `'spot'` ici — distingue des perpetuals lors d'une fusion. */
-  kind: MarketKind;
-}
-
-export interface SpotMeta {
-  tokens: SpotToken[];
-  universe: SpotPair[];
-}
 
 type SpotMetaWire = { tokens: SpotToken[]; universe: Omit<SpotPair, 'kind'>[] };
 

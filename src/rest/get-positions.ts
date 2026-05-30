@@ -1,14 +1,7 @@
+import type { GetPositionsParams } from '../common/types';
 import type { Position } from '../common/types';
 import { PositionConverter, type PositionNative } from '../converters/position';
 import { getClearinghouseState } from './info/get-clearinghouse-state';
-
-/** Paramètres unifiés (mêmes champs sur les 3 SDK). */
-export interface GetPositionsParams {
-  /** Adresse réelle du compte (master/sub), **requise** côté HL. */
-  user: string;
-  /** Filtre optionnel sur une paire (appliqué côté client). */
-  name?: string;
-}
 
 /** Positions ouvertes au **format unifié** `Position` (HL `clearinghouseState.assetPositions`). */
 export function getPositions(params: GetPositionsParams, label?: string): Promise<Position[]> {

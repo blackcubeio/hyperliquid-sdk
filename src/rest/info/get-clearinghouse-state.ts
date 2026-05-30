@@ -1,53 +1,13 @@
+import type {
+  AssetPosition,
+  ClearinghouseState,
+  MarginSummary,
+  PerpPosition,
+  PositionCumFunding,
+  PositionLeverage,
+} from '../../common/types';
 import type { JsonValue } from '../../common/types';
 import { infoRequest } from '../client';
-
-export interface MarginSummary {
-  accountValue: string;
-  totalNtlPos: string;
-  totalRawUsd: string;
-  totalMarginUsed: string;
-}
-
-export interface PositionLeverage {
-  type: string;
-  value: number;
-  rawUsd?: string;
-}
-
-export interface PositionCumFunding {
-  allTime: string;
-  sinceOpen: string;
-  sinceChange: string;
-}
-
-/** Position perp native HL (utilisée par `getClearinghouseState`, spécifique). */
-export interface PerpPosition {
-  coin: string;
-  szi: string;
-  entryPx?: string;
-  positionValue: string;
-  unrealizedPnl: string;
-  returnOnEquity: string;
-  leverage: PositionLeverage;
-  liquidationPx: string | null;
-  marginUsed: string;
-  maxLeverage: number;
-  cumFunding: PositionCumFunding;
-}
-
-export interface AssetPosition {
-  type: string;
-  position: PerpPosition;
-}
-
-export interface ClearinghouseState {
-  marginSummary: MarginSummary;
-  crossMarginSummary: MarginSummary;
-  crossMaintenanceMarginUsed: string;
-  withdrawable: string;
-  assetPositions: AssetPosition[];
-  time: number;
-}
 
 /**
  * État de marge perps d'un compte (valeur, marge utilisée, positions ouvertes).

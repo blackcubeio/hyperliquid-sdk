@@ -1,5 +1,6 @@
+import type { ApproveAgentParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const APPROVE_AGENT_TYPES: Eip712Types = {
   'HyperliquidTransaction:ApproveAgent': [
@@ -9,14 +10,6 @@ export const APPROVE_AGENT_TYPES: Eip712Types = {
     { name: 'nonce', type: 'uint64' },
   ],
 };
-
-export interface ApproveAgentParams {
-  /** Adresse de l'API/agent wallet à autoriser. */
-  agentAddress: `0x${string}`;
-  /** Nom de l'agent ("" pour un agent non nommé). */
-  agentName?: string;
-  nonce?: number;
-}
 
 export function buildApproveAgentAction(params: ApproveAgentParams, nonce: number) {
   return {

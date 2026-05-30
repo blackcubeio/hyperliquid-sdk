@@ -1,9 +1,5 @@
+import type { ScheduleCancelParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-
-export interface ScheduleCancelParams {
-  /** Horodatage (ms) de l'annulation programmée (dead-man's switch). Omis/null = désactive. */
-  time?: number | null;
-}
 
 /** Construit l'action L1 `scheduleCancel`. */
 export function buildScheduleCancelAction(

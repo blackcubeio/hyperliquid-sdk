@@ -1,8 +1,6 @@
+import type { AllMids } from '../../common/types';
 import type { JsonValue } from '../../common/types';
 import { infoRequest } from '../client';
-
-/** Prix mid de toutes les coins, indexés par nom de coin. */
-export type AllMids = Record<string, string>;
 
 /**
  * Récupère les prix mid de toutes les coins.

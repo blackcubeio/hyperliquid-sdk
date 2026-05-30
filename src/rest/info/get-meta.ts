@@ -1,20 +1,6 @@
+import type { AssetMeta, Meta } from '../../common/types';
 import type { JsonValue, MarketKind } from '../../common/types';
 import { infoRequest } from '../client';
-
-export interface AssetMeta {
-  name: string;
-  szDecimals: number;
-  maxLeverage: number;
-  onlyIsolated?: boolean;
-  isDelisted?: boolean;
-  /** Toujours `'perp'` ici — distingue des paires spot lors d'une fusion. */
-  kind: MarketKind;
-}
-
-export interface Meta {
-  universe: AssetMeta[];
-  marginTables?: unknown[];
-}
 
 type MetaWire = { universe: Omit<AssetMeta, 'kind'>[]; marginTables?: unknown[] };
 
