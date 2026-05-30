@@ -1,9 +1,9 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { init } from '../src/common/config';
 import { buildCancelByCloidAction } from '../src/rest/exchange/cancel-by-cloid';
 import { buildUsdClassTransferAction } from '../src/rest/exchange/usd-class-transfer';
+import { getFundingHistory } from '../src/rest/get-funding-history';
 import { getFrontendOpenOrders } from '../src/rest/info/get-frontend-open-orders';
-import { getFundingHistory } from '../src/rest/info/get-funding-history';
 import { getOrderStatus } from '../src/rest/info/get-order-status';
 
 const ZERO = '0x0000000000000000000000000000000000000000' as const;
@@ -30,26 +30,26 @@ describe('actions de niche (formes)', () => {
 });
 
 describe('lectures de niche (mainnet réel)', () => {
-  beforeAll(() => {
-    init();
-  });
+  const client = init();
 
   it('getFundingHistory renvoie un historique BTC', async () => {
-    const history = await getFundingHistory({
-      coin: 'BTC',
+    const history = await getFundingHistory(client, {
+      name: 'BTC',
       startTime: Date.now() - 24 * 3600 * 1000,
     });
     expect(Array.isArray(history)).toBe(true);
-    expect(history[0]?.coin).toBe('BTC');
+    expect(history[0]?.name).toBe('BTC');
+    expect(typeof history[0]?.fundingRate).toBe('string');
+    expect(typeof history[0]?.xtras?.premium).toBe('string');
   });
 
   it('getOrderStatus renvoie un statut', async () => {
-    const result = await getOrderStatus({ user: ZERO, oid: 1 });
+    const result = await getOrderStatus(client, { user: ZERO, oid: 1 });
     expect(typeof result.status).toBe('string');
   });
 
   it('getFrontendOpenOrders renvoie un tableau', async () => {
-    const orders = await getFrontendOpenOrders({ user: ZERO });
+    const orders = await getFrontendOpenOrders(client, { user: ZERO });
     expect(Array.isArray(orders)).toBe(true);
   });
 });

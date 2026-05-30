@@ -1,12 +1,6 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { UpdateIsolatedMarginParams } from '../../common/types';
 import { exchangeL1Action } from '../client';
-
-export interface UpdateIsolatedMarginParams {
-  asset: number;
-  /** Sens de la position (true = long). */
-  isBuy: boolean;
-  /** Marge à ajouter (négatif pour retirer), en micro-USD entier (USD × 1e6). */
-  ntli: number;
-}
 
 /** Construit l'action L1 `updateIsolatedMargin`. */
 export function buildUpdateIsolatedMarginAction(
@@ -22,8 +16,9 @@ export function buildUpdateIsolatedMarginAction(
 
 /** Ajuste la marge isolée d'une position (signé, `/exchange`). */
 export function updateIsolatedMargin<TResponse = unknown>(
+  client: HyperliquidClient,
   params: UpdateIsolatedMarginParams,
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildUpdateIsolatedMarginAction(params), label);
+  return exchangeL1Action<TResponse>(client, buildUpdateIsolatedMarginAction(params), label);
 }

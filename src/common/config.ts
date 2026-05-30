@@ -26,7 +26,13 @@ export interface InitOptions {
   wsUrls?: Partial<Record<Network, string>>;
 }
 
-export interface HyperliquidConfig {
+/**
+ * Contexte d'exécution **isolé** d'un SDK Hyperliquid : tout ce dont les fonctions REST/WS ont
+ * besoin (fetch, urls, signers). Créé par {@link init} et **passé explicitement** à chaque
+ * fonction (`getCandles(client, …)`) — il n'y a **plus de singleton global**, donc plusieurs
+ * clients (comptes/réseaux différents) coexistent sans se piétiner.
+ */
+export interface HyperliquidClient {
   signers: Record<string, Signer>;
   fetch: FetchLike;
   webSocket: WebSocketFactory;
@@ -34,9 +40,8 @@ export interface HyperliquidConfig {
   wsUrls: Record<Network, string>;
 }
 
-let config: HyperliquidConfig | null = null;
-
-export function init(options: InitOptions = {}): void {
+/** Construit un {@link HyperliquidClient} isolé à partir des options. Aucun état global muté. */
+export function init(options: InitOptions = {}): HyperliquidClient {
   const fetchImpl =
     options.fetch ??
     (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : undefined);
@@ -47,7 +52,7 @@ export function init(options: InitOptions = {}): void {
   if (webSocket === undefined) {
     throw new Error('No WebSocket implementation available; pass options.webSocket to init()');
   }
-  config = {
+  return {
     signers: options.signers ?? {},
     fetch: fetchImpl,
     webSocket,
@@ -67,15 +72,4 @@ function defaultWebSocketFactory(): WebSocketFactory | undefined {
     return undefined;
   }
   return (url) => new globalThis.WebSocket(url) as unknown as WebSocketLike;
-}
-
-export function getConfig(): HyperliquidConfig {
-  if (config === null) {
-    throw new Error('Hyperliquid SDK not initialized; call init() first');
-  }
-  return config;
-}
-
-export function resetConfig(): void {
-  config = null;
 }

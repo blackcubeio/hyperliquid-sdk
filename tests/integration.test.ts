@@ -1,13 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { init, resetConfig } from '../src/common/config';
-import { assetIndex } from '../src/common/utils';
-import { cancelOrdersByCloid } from '../src/rest/exchange/cancel-by-cloid';
-import { createLimitOrder } from '../src/rest/exchange/place-order';
-import { getAllMids } from '../src/rest/info/get-all-mids';
-import { getMeta } from '../src/rest/info/get-meta';
+import { describe, expect, it } from 'vitest';
+import { Hyperliquid } from '../src/dex/hyperliquid';
 import { readEnv } from './_env';
 
-// Cycle d'écriture réel sur testnet. Skippé tant que .env n'a pas de clé valide.
+// Cycle d'écriture réel sur testnet via la classe. Skippé tant que .env n'a pas de clé valide.
 const account = readEnv('EVM_PUBLIC_KEY');
 const privateKey = readEnv('EVM_PRIVATE_KEY');
 const ready =
@@ -16,43 +11,38 @@ const ready =
   /^0x[0-9a-f]{64}$/i.test(privateKey) &&
   /[1-9a-f]/i.test(privateKey.slice(2));
 
-describe.skipIf(!ready)('intégration testnet réel', () => {
-  beforeAll(() => {
-    init({
-      signers: {
-        trader: {
-          privateKey: privateKey as `0x${string}`,
-          publicKey: account as `0x${string}`,
-          network: 'testnet',
-        },
+describe.skipIf(!ready)('intégration testnet réel (classe Hyperliquid)', () => {
+  const dex = new Hyperliquid(
+    {
+      trader: {
+        privateKey: privateKey as `0x${string}`,
+        publicKey: account as `0x${string}`,
+        network: 'testnet',
       },
-    });
-  });
-  afterAll(() => {
-    resetConfig();
-  });
+    },
+    { default: 'trader' },
+  );
 
-  it('place un ordre ALO loin du marché puis l’annule par cloid', async () => {
-    const meta = await getMeta(undefined, 'trader');
-    const asset = assetIndex(meta.universe, 'BTC');
-    const mids = await getAllMids(undefined, 'trader');
-    const price = Math.max(1, Math.round(Number(mids.BTC) * 0.5));
+  it('place un ordre ALO loin du marché puis l’annule', async () => {
+    const prices = await dex.perp().getPrices();
+    const mark = Number(prices.find((p) => p.name === 'BTC')?.mid ?? '0');
+    const price = String(Math.max(1, Math.round(mark * 0.5)));
     const cloid = `0x${globalThis.crypto.randomUUID().replace(/-/g, '')}` as `0x${string}`;
 
-    const placed = await createLimitOrder<{ status: string }>(
-      {
-        asset,
-        isBuy: true,
-        price,
-        size: 0.001,
-        tif: 'Alo',
-        cloid,
-      },
-      'trader',
-    );
-    expect(placed.status).toBe('ok');
+    const order = await dex.perp().placeOrder({
+      name: 'BTC',
+      side: 'buy',
+      type: 'limit',
+      tif: 'alo',
+      size: '0.001',
+      price,
+      clientId: cloid,
+    });
+    expect(order.name).toBe('BTC');
+    expect(order.kind).toBe('perp');
+    expect(order.clientId).toBe(cloid);
+    expect(typeof order.id).toBe('string');
 
-    const cancelled = await cancelOrdersByCloid<{ status: string }>([{ asset, cloid }], 'trader');
-    expect(cancelled.status).toBe('ok');
+    await dex.perp().cancelOrder({ name: 'BTC', id: order.id });
   }, 30_000);
 });

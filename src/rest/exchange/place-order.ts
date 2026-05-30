@@ -1,30 +1,7 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { OrderParams, OrderWire } from '../../common/types';
 import { toWireValue } from '../../common/utils';
 import { exchangeL1Action } from '../client';
-
-export type Tif = 'Gtc' | 'Ioc' | 'Alo';
-
-export interface OrderParams {
-  /** Asset ID entier (index dans `meta` pour les perps, `10000 + index` pour le spot). */
-  asset: number;
-  isBuy: boolean;
-  price: number | string;
-  size: number | string;
-  reduceOnly?: boolean;
-  /** Défaut : `Gtc`. */
-  tif?: Tif;
-  /** Client order ID (bytes16 hex, `0x…`). */
-  cloid?: `0x${string}`;
-}
-
-export interface OrderWire {
-  a: number;
-  b: boolean;
-  p: string;
-  s: string;
-  r: boolean;
-  t: { limit: { tif: Tif } };
-  c?: `0x${string}`;
-}
 
 /**
  * Construit l'action L1 `order` (clés courtes a/b/p/s/r/t/c, dans l'ordre exact attendu
@@ -56,10 +33,11 @@ export function buildOrderWire(order: OrderParams): OrderWire {
 
 /** Place un ordre limite (signé, `/exchange`). */
 export function createLimitOrder<TResponse = unknown>(
+  client: HyperliquidClient,
   order: OrderParams,
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction([order]), label);
+  return exchangeL1Action<TResponse>(client, buildOrderAction([order]), label);
 }
 
 /**
@@ -67,16 +45,18 @@ export function createLimitOrder<TResponse = unknown>(
  * natif ; `price` borne le slippage accepté).
  */
 export function createMarketOrder<TResponse = unknown>(
+  client: HyperliquidClient,
   order: Omit<OrderParams, 'tif'>,
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction([{ ...order, tif: 'Ioc' }]), label);
+  return exchangeL1Action<TResponse>(client, buildOrderAction([{ ...order, tif: 'Ioc' }]), label);
 }
 
 /** Place plusieurs ordres dans une seule action atomique (signé, `/exchange`). */
 export function placeOrders<TResponse = unknown>(
+  client: HyperliquidClient,
   orders: OrderParams[],
   label: string,
 ): Promise<TResponse> {
-  return exchangeL1Action<TResponse>(buildOrderAction(orders), label);
+  return exchangeL1Action<TResponse>(client, buildOrderAction(orders), label);
 }

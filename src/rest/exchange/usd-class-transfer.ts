@@ -1,5 +1,7 @@
+import type { HyperliquidClient } from '../../common/config';
+import type { UsdClassTransferParams } from '../../common/types';
+import type { Eip712Types } from '../../common/types';
 import { userSignedRequest } from '../client';
-import type { Eip712Types } from '../types';
 
 export const USD_CLASS_TRANSFER_TYPES: Eip712Types = {
   'HyperliquidTransaction:UsdClassTransfer': [
@@ -9,14 +11,6 @@ export const USD_CLASS_TRANSFER_TYPES: Eip712Types = {
     { name: 'nonce', type: 'uint64' },
   ],
 };
-
-export interface UsdClassTransferParams {
-  /** Montant USDC en chaîne. */
-  amount: string;
-  /** `true` = spot → perp, `false` = perp → spot. */
-  toPerp: boolean;
-  nonce?: number;
-}
 
 export function buildUsdClassTransferAction(params: UsdClassTransferParams, nonce: number) {
   return {
@@ -30,11 +24,12 @@ export function buildUsdClassTransferAction(params: UsdClassTransferParams, nonc
 
 /** Transfert d'USDC entre le wallet perp et le wallet spot (user-signed). */
 export function usdClassTransfer<TResponse = unknown>(
+  client: HyperliquidClient,
   params: UsdClassTransferParams,
   label: string,
 ): Promise<TResponse> {
   const nonce = params.nonce ?? Date.now();
-  return userSignedRequest<TResponse>({
+  return userSignedRequest<TResponse>(client, {
     action: buildUsdClassTransferAction(params, nonce),
     types: USD_CLASS_TRANSFER_TYPES,
     nonce,

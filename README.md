@@ -1,139 +1,156 @@
 # @blackcube/hyperliquid-sdk
 
-[![npm](https://img.shields.io/npm/v/@blackcube/hyperliquid-sdk.svg)](https://www.npmjs.com/package/@blackcube/hyperliquid-sdk)
-[![license](https://img.shields.io/npm/l/@blackcube/hyperliquid-sdk.svg)](./LICENSE)
+TypeScript SDK pour l'exchange [Hyperliquid](https://hyperliquid.xyz) — DEX perpetuals & spot
+sur sa propre L1. Même surface que `@blackcube/aster-sdk` et `@blackcube/pacifica-sdk`.
 
-TypeScript SDK for the [Hyperliquid](https://hyperliquid.xyz) exchange — a high-performance
-perpetuals & spot DEX on its own L1. Full coverage of the REST `info` / `exchange` endpoints,
-the WebSocket API, and EIP-712 request signing.
+> **SDK communautaire / non officiel.** Non affilié à Hyperliquid. Usage à vos risques.
 
-> **Unofficial / community SDK.** Not affiliated with or endorsed by Hyperliquid. "Hyperliquid"
-> is a trademark of its respective owner. Use at your own risk.
-
-## Features
-
-- ✅ **REST `info`** — mids, meta, order book, clearinghouse state, open orders, fills, candles, funding, spot meta…
-- ✅ **REST `exchange`** — orders (limit/market/modify/cancel/cancel-by-cloid/batch), leverage, isolated margin, scheduled cancel
-- ✅ **User-signed actions** — `usdSend`, `spotSend`, `withdraw`, `usdClassTransfer`, `approveAgent`
-- ✅ **WebSocket** — typed subscriptions and signed trading actions over `post`
-- ✅ **Signing** — EIP-712 + msgpack (L1 actions) and EIP-712 typed data (user-signed), secp256k1, API/agent wallets
-- ✅ Typed end-to-end, ESM + CJS + `.d.ts`, Node.js and browser-safe (crypto via [`@noble`](https://paulmillr.com/noble/))
-- ✅ **Mainnet & testnet at the same time** — the network is carried per signer, not globally
-
-## Install
+## Installation
 
 ```bash
-npm install @blackcube/hyperliquid-sdk
-# or
 pnpm add @blackcube/hyperliquid-sdk
 ```
 
-Requires Node.js ≥ 22 (for the built-in WebSocket used by `WsClient`; or inject one). Browsers work as-is.
+Node.js (≥ 22) et navigateur (crypto via `@noble`).
 
-## Quick start
+## Tout passe par la classe `Hyperliquid`
+
+Tu n'appelles jamais un endpoint REST ni un client WebSocket directement. Une seule classe
+gère la connexion, la signature (EIP-712 + msgpack), le réseau (mainnet/testnet) et la
+conversion vers les types unifiés Blackcube.
 
 ```ts
-import {
-  init,
-  getAllMids,
-  getMeta,
-  createLimitOrder,
-  cancelOrdersByCloid,
-  assetIndex,
-  WsClient,
-} from '@blackcube/hyperliquid-sdk';
+import { Hyperliquid } from '@blackcube/hyperliquid-sdk';
 
-// Initialise once. Register one signer per label; each signer carries its own
-// network, so mainnet and testnet live side by side in the same process.
-init({
-  signers: {
-    trader: { privateKey: '0x…', publicKey: '0x…', network: 'mainnet' },
-    tester: { privateKey: '0x…', publicKey: '0x…', network: 'testnet' },
-  },
-});
-
-// Public read — label is OPTIONAL. No label → mainnet. A label → that signer's network.
-const mids = await getAllMids();                 // mainnet
-const testMids = await getAllMids(undefined, 'tester'); // testnet
-
-// Signed write — label is MANDATORY (it picks the wallet *and* the network).
-// Omitting it throws, so you can never sign on the wrong chain by accident.
-const meta = await getMeta(undefined, 'tester');
-const asset = assetIndex(meta.universe, 'BTC'); // perp asset ID = index in meta.universe
-const result = await createLimitOrder(
-  { asset, isBuy: true, price: 30000, size: 0.001, tif: 'Alo' },
-  'tester',
+const dex = new Hyperliquid(
+  { deskA: { privateKey: '0x…', publicKey: '0x…', network: 'testnet' } },
+  { default: 'deskA' },
 );
 
-// WebSocket: stream + signed actions. Pass the label at construction; reads default to mainnet.
-const ws = new WsClient({ label: 'tester' });
-await ws.connect();
-ws.subscribeAllMids((data) => console.log(data));
-await ws.createLimitOrder({ asset, isBuy: true, price: 30000, size: 0.001, tif: 'Alo' });
+// REST : requête → réponse
+const candles = await dex.perp().getCandles({ name: 'BTC', interval: '1m', limit: 100 });
+const order = await dex.perp().placeOrder({
+  name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '20000',
+});
+
+// WebSocket : abonnement → flux
+const off = dex.ws().subscribeCandles({ name: 'BTC', interval: '1m' }, (candle) => {
+  console.log(candle.c);
+});
+off(); // se désabonne (ferme le socket s'il n'y a plus d'abonné)
 ```
 
-## Configuration
+## REST vs WebSocket — la seule distinction à connaître
 
-`init(options)` sets a single global config; every call inherits it.
+- **REST** (`perp()`, `spot()`, `account()`) : **requête → réponse**. Tu `await`
+  un appel, tu reçois une valeur, terminé.
+- **WebSocket** (`ws()`, `wsSpot()`) : **abonnement → flux**. Tu passes un *handler* rappelé
+  **à chaque** mise à jour, tant que tu n'as pas appelé la fonction de désabonnement renvoyée.
+  Pas de `connect()`/`disconnect()` : le socket s'ouvre au premier `subscribe` et se ferme
+  seul quand le dernier abonnement est retiré.
 
-| Option | Type | Default |
-|---|---|---|
-| `signers` | `Record<label, Signer>` | — (required for signed writes) |
-| `fetch` | `FetchLike` | `globalThis.fetch` |
-| `webSocket` | `WebSocketFactory` | `globalThis.WebSocket` |
-| `restUrls` / `wsUrls` | `Record<Network, string>` | per network |
+Tous les retours (REST comme WS) sont au **format unifié** (`Candle`, `Order`, `OrderBook`,
+`Position`, `Trade`, `UserTrade`, `Price`, `Balance`…), identique entre les SDK Blackcube.
 
-A `Signer` is self-contained and **carries its own network**:
+## Construction
 
 ```ts
-type Signer = {
-  privateKey: `0x${string}`;
-  publicKey: `0x${string}`;
-  network: 'mainnet' | 'testnet';
-  vaultAddress?: `0x${string}`; // optional, for vault / sub-account trading
-};
+new Hyperliquid(signers?, options?)
 ```
 
-Register signers under arbitrary **labels** (`trader`, `tester`, …), then pass the label per call:
+- **`signers`** : `Record<label, Signer>`. Un `Signer` Hyperliquid =
+  `{ privateKey, publicKey, network, vaultAddress? }` — clé secp256k1 (EVM). `privateKey` est
+  l'API/agent wallet qui signe ; `publicKey` est l'adresse réelle du compte (master/sub) lue par
+  l'API. Sans signer, seules les lectures publiques fonctionnent.
+- **`options.default`** : label utilisé quand tu n'en précises pas (sinon le premier signer).
+- Autres `options` (rarement utiles) : `fetch`, `webSocket`, `restUrls`, `wsUrls`.
 
-- **Read methods** (don't touch funds): label is **optional**. No label → **mainnet** fallback; a
-  label → that signer's network. Unknown label throws.
-- **Write methods** (orders, transfers, leverage…): label is **mandatory**. Omitting it throws — the
-  label is what selects both the wallet *and* the network, so there is no implicit default.
+Chaque scope accepte un `label` optionnel pour choisir le compte : `dex.perp('deskB')`,
+`dex.account('deskB')`… Sans argument → signer par défaut. **Plusieurs instances `Hyperliquid`
+(comptes/réseaux différents) coexistent** sans interférence — chacune a sa propre config (pas de
+singleton global).
 
-This makes mainnet and testnet usable simultaneously in one process. See [doc/signing](./doc/signing.md).
+## Deux produits, un `kind` porté par le scope
 
-## API documentation
+Hyperliquid mêle perp et spot dans une même API : une paire **spot** se nomme `BASE/QUOTE`
+(ex. `PURR/USDC`) ou `@index` (ex. `@1`) ; tout le reste est un **perp** (`BTC`, `HYPE`…). Le SDK
+en déduit le `kind`, et le **scope** (`perp()` vs `spot()`) le confirme et l'annote sur les retours.
 
-Organised like the [Hyperliquid API docs](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api):
+### `dex.perp(label?)` / `dex.spot(label?)` — marché + trading + compte du produit
 
-- **REST** — [Info (reads)](./doc/rest-api/info.md) · [Exchange (signed actions)](./doc/rest-api/exchange.md)
-- **WebSocket** — [Subscriptions & trading](./doc/websocket.md)
-- **Signing** — [EIP-712 / msgpack signing](./doc/signing.md)
+| Catégorie | Méthodes |
+|---|---|
+| Marché (public) | `getPairs()`, `getCandles(q)`, `getOrderBook(q)`, `getPrices()`, `getFundingHistory(q)`, `getExchangeInfo()` |
+| Compte du produit (signé) | `getPositions(q?)`, `getOpenOrders(q?)`, `getUserTrades(q?)`, `getAccountInfo()` |
+| Trading (signé) | `placeOrder(i)`, `cancelOrder(i)`, `cancelAllOrders(i)`, `editOrder(i)`, `updateLeverage(i)`, `setMarginMode(i)`, `addIsolatedMargin(i)`, `removeIsolatedMargin(i)` |
 
-Full index: [`doc/`](./doc/README.md).
+> **Spécificités Hyperliquid** (la surface unifiée n'expose que ce qui existe) :
+> - pas de **trades publics REST** (`getTrades`) ni d'**historique d'ordres** (`getOrderHistory`) ;
+> - `placeOrder` accepte `limit` / `market` (le `market` est un IOC borné par `price`) ;
+> - `setMarginMode` est traduit en `updateLeverage(isCross)` (HL couple mode **et** levier) : la
+>   méthode préserve le levier de la position courante, ou retombe sur `1×` s'il n'y en a pas.
 
-## Conventions
+### `dex.account(label?)` — compte transverse (sans produit)
 
-- Public API in **camelCase**; the `exchange` wire uses Hyperliquid's short keys (`a`/`b`/`p`/`s`/`r`/`t`/`c`) internally.
-- Amounts and prices are **decimal strings** on the wire (`floatToWire` formats numbers for you).
-- Asset IDs are integers: perps = index in `meta.universe`, spot = `10000 + index` (see `assetIndex`).
-- Errors throw `HyperliquidApiError` (`status`, `message`).
+`getBalances()` (soldes spot), `withdraw(i)`.
 
-## Development
+> Hyperliquid n'expose pas de **liste de sous-comptes** : pas de `getSubAccounts()`.
 
-```bash
-pnpm install
-pnpm typecheck   # tsc --noEmit
-pnpm lint        # biome
-pnpm test        # vitest (real integration tests against mainnet reads + testnet writes)
-pnpm build       # tsup → dist (ESM + CJS + d.ts)
+> Hyperliquid n'a ni `ping` ni horloge serveur publics : **pas de scope `system()`** (capacité
+> `ISystem` non implémentée).
+
+### `dex.helpers()` — crypto (EVM)
+
+`keyTypeOf(pk)`, `privateKeyToAddress(pk)`, `toChecksumAddress(addr)`. *(Hyperliquid est EVM-only :
+pas d'helpers Solana.)*
+
+### `dex.ws(label?)` (perp) / `dex.wsSpot(label?)` (spot) — temps réel
+
+Chaque `subscribeX` renvoie une fonction de désabonnement (`Unsubscribe`). Les flux user-data
+(`subscribeOrders`, `subscribeUserTrades`) utilisent l'adresse du compte, résolue depuis le signer.
+
+| Catégorie | Méthodes |
+|---|---|
+| Public | `subscribeCandles(q, cb)`, `subscribeOrderBook(q, cb)`, `subscribeTrades(q, cb)`, `subscribeBbo(q, cb)` (→ `OrderBook` 1 niveau), `subscribePrices(cb)` (→ `Price[]`) |
+| Compte (signé) | `subscribeOrders(cb)`, `subscribeUserTrades(cb)` |
+
+> Hyperliquid n'a pas de flux de **positions** dédié : pas de `subscribePositions()`.
+
+### Scopes spécifiques Hyperliquid (hors contrat commun)
+
+Hyperliquid offre des opérations qui n'existent pas sur les autres DEX — exposées à part :
+
+- `dex.transfers(label?)` : `usdSend(i)`, `usdClassTransfer(i)` (perp ↔ spot), `spotSend(i)`.
+- `dex.agent(label?)` : `approveAgent(i)`, `scheduleCancel(i?)` (dead-man's switch).
+
+## Exemples
+
+```ts
+// Lecture publique sans signer
+const pub = new Hyperliquid();
+const book = await pub.perp().getOrderBook({ name: 'BTC' });
+
+// Cycle d'ordre (testnet)
+const created = await dex.perp().placeOrder({
+  name: 'BTC', side: 'buy', type: 'limit', tif: 'alo', size: '0.001', price: '20000',
+});
+await dex.perp().cancelOrder({ name: 'BTC', id: created.id });
+
+// Compte transverse
+const balances = await dex.account().getBalances();
+
+// Temps réel : suivre ses propres fills
+const off = dex.ws().subscribeUserTrades((fill) => console.log(fill.price, fill.size));
 ```
 
-> Tests are **real integration tests** (no mocks): public reads/WebSocket hit mainnet, and the
-> write lifecycle hits testnet. Signed tests require `EVM_PUBLIC_KEY` / `EVM_PRIVATE_KEY` in `.env`
-> and run sequentially.
+## Erreurs
+
+Les appels rejettent un `HyperliquidApiError` (`status`, `message`).
+
+## Documentation
+
+Détail des signatures (EIP-712 L1 + user-signed, msgpack) : [`doc/signing.md`](doc/signing.md).
 
 ## License
 
-[BSD-3-Clause](./LICENSE) © Blackcube
+BSD-3-Clause © Blackcube
