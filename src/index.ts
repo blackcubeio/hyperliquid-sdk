@@ -19,6 +19,7 @@ export * from './rest/update-leverage';
 export * from './rest/place-order';
 export * from './rest/cancel-order';
 export * from './rest/cancel-all-orders';
+export * from './rest/edit-order';
 
 export * from './rest/info/get-all-mids';
 export * from './rest/info/get-meta';
