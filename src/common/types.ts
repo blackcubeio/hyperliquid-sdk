@@ -131,6 +131,12 @@ export interface Price {
   oracle: string | null;
   /** Mid price ; `null` si non fourni. */
   mid: string | null;
+  /** Meilleur bid ; `null` si non fourni. */
+  bid: string | null;
+  /** Meilleur ask ; `null` si non fourni. */
+  ask: string | null;
+  /** Dernier prix négocié ; `null` si non fourni. */
+  last: string | null;
   /** Funding rate courant ; `null` si non fourni. */
   funding: string | null;
   /** Open interest ; `null` si non fourni. */
