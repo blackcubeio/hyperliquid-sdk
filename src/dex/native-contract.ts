@@ -5,7 +5,7 @@
 // équivalent commun (agents/builders/vaults/staking/subAccounts/referral) restent propres.
 // Lectures get-préfixées, écritures = verbes nus, entrées `…Params`.
 
-import type { Order, UserTrade } from '../common/types';
+import type { Candle, Order, UserTrade } from '../common/types';
 import type { approveAgent } from '../rest/exchange/approve-agent';
 import type { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
 import type { cDeposit } from '../rest/exchange/c-deposit';
@@ -24,18 +24,14 @@ import type { twapOrder } from '../rest/exchange/twap-order';
 import type { vaultDistribute } from '../rest/exchange/vault-distribute';
 import type { vaultModify } from '../rest/exchange/vault-modify';
 import type { vaultTransfer } from '../rest/exchange/vault-transfer';
-import type { getAllMids } from '../rest/info/get-all-mids';
-import type { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
 import type { getDelegations } from '../rest/info/get-delegations';
 import type { getDelegatorHistory } from '../rest/info/get-delegator-history';
 import type { getDelegatorRewards } from '../rest/info/get-delegator-rewards';
 import type { getDelegatorSummary } from '../rest/info/get-delegator-summary';
-import type { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
 import type { getHistoricalOrders } from '../rest/info/get-historical-orders';
 import type { getMaxBuilderFee } from '../rest/info/get-max-builder-fee';
 import type { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
 import type { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
-import type { getOrderStatus } from '../rest/info/get-order-status';
 import type { getPerpDexs } from '../rest/info/get-perp-dexs';
 import type { getPortfolio } from '../rest/info/get-portfolio';
 import type { getPredictedFundings } from '../rest/info/get-predicted-fundings';
@@ -88,6 +84,18 @@ export interface AccountHistoryParams {
   startTime: string;
   endTime?: string;
 }
+/** Prix médian d'un marché (sortie normalisée de `getAllMids`). */
+export interface Mid {
+  name: string;
+  mid: string;
+}
+/** Entrée `getCandleSnapshot` — vocabulaire commun (`name`, bornes datetime `YYYY-MM-DD HH:MM:SS`). */
+export interface CandleSnapshotParams {
+  name: string;
+  interval: string;
+  startTime?: string;
+  endTime?: string;
+}
 
 /** Agents (API wallets) — HL n'expose que l'autorisation. */
 export interface IAgents {
@@ -111,14 +119,15 @@ export interface ISubAccountsAdmin {
  * qui **réutilisent les types communs** (`Order`/`UserTrade`) quand le concept existe.
  */
 export interface INativePerp {
-  // ── lectures marché supplémentaires (publiques) ──
-  getAllMids(dex?: string): ReturnType<typeof getAllMids>;
-  getCandleSnapshot(params: Args<typeof getCandleSnapshot>): ReturnType<typeof getCandleSnapshot>;
+  // ── lectures marché supplémentaires (publiques ; I/O normalisés) ──
+  /** Prix médians par marché → `Mid[]` (`name`/`mid`). */
+  getAllMids(dex?: string): Promise<Mid[]>;
+  /** Bougies (fenêtre datetime `YYYY-MM-DD HH:MM:SS`) → `Candle[]` (type commun). */
+  getCandleSnapshot(params: CandleSnapshotParams): Promise<Candle[]>;
   getMetaAndAssetCtxs(): ReturnType<typeof getMetaAndAssetCtxs>;
   getMetaAndAssetCtxsSpot(): ReturnType<typeof getMetaAndAssetCtxsSpot>;
-  getFrontendOpenOrders(
-    params: Args<typeof getFrontendOpenOrders>,
-  ): ReturnType<typeof getFrontendOpenOrders>;
+  /** Ordres ouverts (détaillés) → `Order[]` (type commun). */
+  getFrontendOpenOrders(params?: { name?: string }): Promise<Order[]>;
   getPredictedFundings(): ReturnType<typeof getPredictedFundings>;
   getPerpDexs(): ReturnType<typeof getPerpDexs>;
   // ── ordres avancés (signés ; I/O normalisés, types communs) ──
@@ -127,7 +136,8 @@ export interface INativePerp {
   cancelMany(params: CancelManyParams): ReturnType<typeof cancelOrders>;
   cancelManyByClientId(params: CancelManyByClientIdParams): ReturnType<typeof cancelOrdersByCloid>;
   editBatch(params: EditBatchParams): ReturnType<typeof batchModifyOrders>;
-  getById(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
+  /** Statut d'un ordre par `id` → `Order` (type commun). */
+  getById(params: { name: string; id: string }): Promise<Order>;
   /** Fills du compte (fenêtre datetime `YYYY-MM-DD HH:MM:SS`) → `UserTrade[]` (type commun). */
   getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]>;
   placeTwap(params: TwapOrderParams): ReturnType<typeof twapOrder>;

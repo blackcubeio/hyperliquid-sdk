@@ -30,34 +30,35 @@ Formes natives assumées (shapes par **index d'actif**) — hors contrat portabl
 
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `getAllMids(dex?)` | `string?` | `Promise<AllMids>` (map `coin → mid`) |
-| `getCandleSnapshot(p)` | `{ coin; interval; startTime; endTime? }` | `Promise<Candle[]>` |
+| `getAllMids(dex?)` | `string?` | **`Promise<Mid[]>`** (`{ name; mid }`) |
+| `getCandleSnapshot(p)` | `{ name; interval; startTime?; endTime? }` (datetime) | **`Promise<Candle[]>`** (type commun) |
 | `getMetaAndAssetCtxs()` | — | `Promise<[Meta, AssetCtx[]]>` (perp) |
 | `getMetaAndAssetCtxsSpot()` | — | `Promise<[SpotMeta, SpotAssetCtx[]]>` |
-| `getFrontendOpenOrders(p)` | `{ user: 0x; dex? }` | `Promise<FrontendOrder[]>` |
+| `getFrontendOpenOrders(p?)` | `{ name? }` | **`Promise<Order[]>`** (type commun) |
 | `getPredictedFundings()` | — | `Promise<unknown>` |
 | `getPerpDexs()` | — | `Promise<unknown>` |
 | `placeBatch(orders)` | `PlaceOrderParams[]` (vocab commun) | **`Promise<Order[]>`** (1 par leg) |
 | `cancelMany(cancels)` | `CancelManyParams` | `Promise<unknown>` *(I/O encore natif — rollout)* |
 | `cancelManyByClientId(cancels)` | `CancelManyByClientIdParams` | `Promise<unknown>` *(rollout)* |
 | `editBatch(modifies)` | `EditBatchParams` | `Promise<unknown>` *(rollout)* |
-| `getById(p)` | `{ user: 0x; oid }` | `Promise<OrderStatusResponse>` *(rollout)* |
+| `getById(p)` | `{ name; id }` | **`Promise<Order>`** (type commun) |
 | `getFills(p)` | `{ startTime; endTime? }` (datetime) | **`Promise<UserTrade[]>`** |
 | `placeTwap(p)` | `TwapOrderParams` | `Promise<unknown>` (twapId) |
 | `cancelTwap(p)` | `TwapCancelParams` | `Promise<unknown>` |
 | `getTwapFills()` | — | `Promise<unknown>` (fills des slices) |
 
 ```ts
-// lectures marché
-await dex.native.perp().getAllMids();
-await dex.native.perp().getMetaAndAssetCtxs();
-await dex.native.perp().getCandleSnapshot({ coin: 'BTC', interval: '1h', startTime: Date.now() - 6 * 3600_000 });
+// lectures marché — I/O normalisés (types communs)
+const mids = await dex.native.perp().getAllMids();                       // → Mid[] { name, mid }
+await dex.native.perp().getCandleSnapshot({ name: 'BTC', interval: '1h', startTime: '2026-05-31 00:00:00' }); // → Candle[]
+const open = await dex.native.perp().getFrontendOpenOrders({ name: 'BTC' });  // → Order[]
 // ordres avancés — I/O normalisés (vocab commun + types communs)
 const orders = await dex.native.perp().placeBatch([
   { name: 'BTC', side: 'buy', type: 'limit', price: '50000', size: '0.001', tif: 'alo' },
 ]); // → Order[]
+const one = await dex.native.perp().getById({ name: 'BTC', id: orders[0].id }); // → Order
 const fills = await dex.native.perp().getFills({ startTime: '2026-05-31 00:00:00' }); // → UserTrade[]
-// (cancelMany / cancelManyByClientId / editBatch / getById : I/O encore natif, normalisés au rollout)
+// (cancelMany / cancelManyByClientId / editBatch / twap : I/O encore natif, normalisés au rollout)
 await dex.native.perp().cancelMany([{ asset: 0, oid: Number(orders[0].id) }]);
 const twap = await dex.native.perp().placeTwap({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
 await dex.native.perp().cancelTwap({ asset: 0, twapId: 123 });

@@ -188,11 +188,12 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     expect(order?.id).not.toBe('');
     const oid = Number(order?.id);
 
-    // Lecture signée (getById encore natif dans cette référence).
-    const status = await dex.native.perp().getById({ user: account as `0x${string}`, oid });
-    expect(status).toBeDefined();
+    // getById normalisé → Order (type commun).
+    const found = await dex.native.perp().getById({ name: 'BTC', id: order?.id ?? '' });
+    expect(found.name).toBe('BTC');
+    expect(found.id).toBe(order?.id);
 
-    // Annulation par lot (cancelMany encore natif).
+    // Annulation par lot (cancelMany encore natif — rollout).
     const cancel = await dex.native.perp().cancelMany([{ asset, oid }]);
     expect(cancel).toBeDefined();
   }, 30_000);

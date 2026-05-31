@@ -30,23 +30,27 @@ describe('Hyperliquid — namespace native (mainnet réel, public)', () => {
     expect(dexs).toBeDefined();
   });
 
-  it('native.perp().getAllMids()', async () => {
-    const mids = (await dex.native.perp().getAllMids()) as Record<string, unknown>;
-    expect(Object.keys(mids).length).toBeGreaterThan(0);
+  it('native.perp().getAllMids() → Mid[]', async () => {
+    const mids = await dex.native.perp().getAllMids();
+    expect(mids.length).toBeGreaterThan(0);
+    expect(typeof mids[0]?.name).toBe('string');
+    expect(typeof mids[0]?.mid).toBe('string');
   });
 
-  it('native.perp().getMetaAndAssetCtxs() + getCandleSnapshot()', async () => {
+  it('native.perp().getMetaAndAssetCtxs() + getCandleSnapshot() → Candle[]', async () => {
     const meta = await dex.native.perp().getMetaAndAssetCtxs();
     expect(meta).toBeDefined();
 
+    const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
     const now = Date.now();
-    const candles = (await dex.native.perp().getCandleSnapshot({
-      coin: 'BTC',
+    const candles = await dex.native.perp().getCandleSnapshot({
+      name: 'BTC',
       interval: '1h',
-      startTime: now - 6 * 3600_000,
-      endTime: now,
-    })) as unknown[];
+      startTime: fmt(now - 6 * 3600_000),
+      endTime: fmt(now),
+    });
     expect(Array.isArray(candles)).toBe(true);
     expect(candles.length).toBeGreaterThan(0);
+    expect(candles[0]?.s).toBe('BTC');
   });
 });
