@@ -88,20 +88,43 @@ await dex.native.advancedOrders().fillsByTime({ user: '0x…', startTime: Date.n
 await dex.native.agents().approve({ agentAddress: '0x…', agentName: 'bot' });
 ```
 
-## `native.transfers()` — `ITransfers` (USDC perp / bascule perp↔spot / token spot)
+## `native.transfers()` — `ITransfers` (USDC perp / bascule perp↔spot / token spot / inter-DEX)
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `usdSend(p)` | `UsdSend` | `Promise<unknown>` |
 | `usdClassTransfer(p)` | `UsdClassTransfer` | `Promise<unknown>` |
 | `spotSend(p)` | `SpotSend` | `Promise<unknown>` |
+| `sendAsset(p)` | `SendAsset` `{ destination; sourceDex?; destinationDex?; token; amount; fromSubAccount? }` | `Promise<unknown>` |
 
 ```ts
 await dex.native.transfers().usdSend({ destination: '0x…', amount: '10' });
 await dex.native.transfers().usdClassTransfer({ amount: '10', toPerp: false }); // perp → spot
 await dex.native.transfers().spotSend({ destination: '0x…', token: 'USDC:0x…', amount: '10' });
+await dex.native.transfers().sendAsset({ destination: '0x…', sourceDex: '', destinationDex: 'spot', token: 'USDC', amount: '10' });
+```
+
+## `native.subAccounts()` — `ISubAccountsAdmin` (sous-comptes)
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `create(p)` | `CreateSubAccount` `{ name }` | `Promise<unknown>` |
+| `transfer(p)` | `SubAccountTransfer` `{ subAccountUser: 0x; isDeposit; usd }` | `Promise<unknown>` |
+| `spotTransfer(p)` | `SubAccountSpotTransfer` `{ subAccountUser; isDeposit; token; amount }` | `Promise<unknown>` |
+| `modify(p)` | `SubAccountModify` `{ subAccountUser; name }` | `Promise<unknown>` |
+| `list()` | — | `Promise<unknown>` (sous-comptes du master) |
+
+```ts
+await dex.native.subAccounts().create({ name: 'bot-1' });
+await dex.native.subAccounts().transfer({ subAccountUser: '0x…', isDeposit: true, usd: '10' });   // master → sub
+await dex.native.subAccounts().transfer({ subAccountUser: '0x…', isDeposit: false, usd: '10' });  // sub → master
+await dex.native.subAccounts().spotTransfer({ subAccountUser: '0x…', isDeposit: true, token: 'USDC:0x…', amount: '5' });
+await dex.native.subAccounts().modify({ subAccountUser: '0x…', name: 'bot-2' });
+await dex.native.subAccounts().list();
 ```
 
 ---
 
-> Validation : `tests/native.test.ts` (lectures publiques mainnet) et `tests/native.testnet.test.ts`
-> (chemin signé `advancedOrders` : placeBatch → query → cancelMany sur testnet réel).
+> Validation (`tests/native.testnet.test.ts`, testnet réel) : `advancedOrders` (placeBatch → query →
+> cancelMany), `account` (lectures par adresse), `subAccounts.list()` + **transfert USDC aller-retour**
+> master↔sous-compte si un sous-compte existe. Les **créations** (`subAccounts.create`, agents) et
+> `sendAsset` sont **préparées + documentées** mais testées **manuellement** (pas de création de
+> ressource/clé en test automatisé).

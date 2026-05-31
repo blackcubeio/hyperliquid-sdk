@@ -21,11 +21,16 @@ import { editOrder } from '../rest/edit-order';
 import { approveAgent } from '../rest/exchange/approve-agent';
 import { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
 import { cancelOrders } from '../rest/exchange/cancel-order';
+import { createSubAccount } from '../rest/exchange/create-sub-account';
 // ── Surplus spécifique HL (namespace native) ──
 import { batchModifyOrders } from '../rest/exchange/modify-order';
 import { placeOrders } from '../rest/exchange/place-order';
 import { scheduleCancel } from '../rest/exchange/schedule-cancel';
+import { sendAsset } from '../rest/exchange/send-asset';
 import { spotSend } from '../rest/exchange/spot-send';
+import { subAccountModify } from '../rest/exchange/sub-account-modify';
+import { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
+import { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import { updateIsolatedMargin } from '../rest/exchange/update-isolated-margin';
 import { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import { usdSend } from '../rest/exchange/usd-send';
@@ -53,6 +58,7 @@ import { getOrderStatus } from '../rest/info/get-order-status';
 import { getPerpDexs } from '../rest/info/get-perp-dexs';
 import { getPortfolio } from '../rest/info/get-portfolio';
 import { getPredictedFundings } from '../rest/info/get-predicted-fundings';
+import { getSubAccounts } from '../rest/info/get-sub-accounts';
 import { getUserFees } from '../rest/info/get-user-fees';
 import { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
 import { getUserFunding } from '../rest/info/get-user-funding';
@@ -94,6 +100,7 @@ import type {
   IAdvancedOrders,
   IAgents,
   IMarketDataExtra,
+  ISubAccountsAdmin,
   ITransfers,
 } from './native-contract';
 
@@ -475,6 +482,28 @@ class HyperliquidTransfersScope extends HyperliquidNativeScope implements ITrans
   public spotSend(params: Parameters<typeof spotSend>[1]) {
     return spotSend(this.client, params, this.signed());
   }
+  public sendAsset(params: Parameters<typeof sendAsset>[1]) {
+    return sendAsset(this.client, params, this.signed());
+  }
+}
+
+/** Sous-comptes : création, transferts (perp/spot) master↔sous-compte, renommage, liste. */
+class HyperliquidSubAccountsScope extends HyperliquidNativeScope implements ISubAccountsAdmin {
+  public create(params: Parameters<typeof createSubAccount>[1]) {
+    return createSubAccount(this.client, params, this.signed());
+  }
+  public transfer(params: Parameters<typeof subAccountTransfer>[1]) {
+    return subAccountTransfer(this.client, params, this.signed());
+  }
+  public spotTransfer(params: Parameters<typeof subAccountSpotTransfer>[1]) {
+    return subAccountSpotTransfer(this.client, params, this.signed());
+  }
+  public modify(params: Parameters<typeof subAccountModify>[1]) {
+    return subAccountModify(this.client, params, this.signed());
+  }
+  public list() {
+    return getSubAccounts(this.client, { user: this.user() }, this.signed());
+  }
 }
 
 /** Données de marché supplémentaires : **publiques** (label optionnel). */
@@ -622,6 +651,8 @@ export class Hyperliquid {
         new HyperliquidAdvancedOrdersScope(this.client, resolve(label)),
       /** Lectures de compte étendues (fees, portfolio, funding, ledger, role, rateLimit, historicalOrders). */
       account: (label?: string) => new HyperliquidAccountScope(this.client, resolve(label)),
+      /** Sous-comptes : création, transferts (perp/spot), renommage, liste. */
+      subAccounts: (label?: string) => new HyperliquidSubAccountsScope(this.client, resolve(label)),
     };
   }
 
