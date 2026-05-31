@@ -19,6 +19,11 @@ import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
 import { editOrder } from '../rest/edit-order';
 import { approveAgent } from '../rest/exchange/approve-agent';
+import { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
+import { cancelOrders } from '../rest/exchange/cancel-order';
+// ── Surplus spécifique HL (namespace native) ──
+import { batchModifyOrders } from '../rest/exchange/modify-order';
+import { placeOrders } from '../rest/exchange/place-order';
 import { scheduleCancel } from '../rest/exchange/schedule-cancel';
 import { spotSend } from '../rest/exchange/spot-send';
 import { updateIsolatedMargin } from '../rest/exchange/update-isolated-margin';
@@ -34,10 +39,17 @@ import { getPairs } from '../rest/get-pairs';
 import { getPositions } from '../rest/get-positions';
 import { getPrices } from '../rest/get-prices';
 import { getUserTrades } from '../rest/get-user-trades';
+import { getAllMids } from '../rest/info/get-all-mids';
+import { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
 import { getClearinghouseState } from '../rest/info/get-clearinghouse-state';
 import { getClearinghouseStateSpot } from '../rest/info/get-clearinghouse-state-spot';
+import { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
 import { getMeta } from '../rest/info/get-meta';
+import { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
+import { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
 import { getMetaSpot } from '../rest/info/get-meta-spot';
+import { getOrderStatus } from '../rest/info/get-order-status';
+import { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
 import { updateLeverage } from '../rest/update-leverage';
@@ -68,6 +80,12 @@ import type {
   SymbolQuery,
   WithdrawInput,
 } from './contract';
+import type {
+  IAdvancedOrders,
+  IAgents,
+  IMarketDataExtra,
+  ITransfers,
+} from './hyperliquid-contract';
 
 /** Options de construction d'un {@link Hyperliquid}. */
 export interface HyperliquidDexOptions extends Omit<InitOptions, 'signers'> {
@@ -403,64 +421,81 @@ class HyperliquidRealtime implements IRealtime {
  * Scope **transferts** (spécifique Hyperliquid, hors contrat commun) : mouvements de fonds
  * internes signés en EIP-712 user-signed.
  */
-class HyperliquidTransfers {
+// ── Surplus spécifique Hyperliquid (namespace `native`, convention partagée par les 4 SDK) ──
+
+/** Base des scopes `native` : résolution du label (lectures privées via `signed()`). */
+class HyperliquidNativeScope {
   constructor(
-    private readonly client: HyperliquidClient,
-    private readonly label: string | undefined,
+    protected readonly client: HyperliquidClient,
+    protected readonly label: string | undefined,
   ) {}
 
-  private signed(): string {
+  protected signed(): string {
     if (this.label === undefined) {
       throw new Error('Action signée : aucun signer (ajoute des signers ou un défaut).');
     }
     return this.label;
-  }
-
-  /** Transfert USDC vers un autre compte Hyperliquid. */
-  public usdSend(input: { destination: `0x${string}`; amount: string }): Promise<unknown> {
-    return usdSend(this.client, input, this.signed());
-  }
-  /** Transfert USDC entre le wallet perp et le wallet spot. */
-  public usdClassTransfer(input: { amount: string; toPerp: boolean }): Promise<unknown> {
-    return usdClassTransfer(this.client, input, this.signed());
-  }
-  /** Transfert d'un token spot vers un autre compte. */
-  public spotSend(input: {
-    destination: `0x${string}`;
-    token: string;
-    amount: string;
-  }): Promise<unknown> {
-    return spotSend(this.client, input, this.signed());
   }
 }
 
-/**
- * Scope **agent** (spécifique Hyperliquid, hors contrat commun) : autorisation d'API wallet et
- * dead-man's switch (`scheduleCancel`).
- */
-class HyperliquidAgent {
-  constructor(
-    private readonly client: HyperliquidClient,
-    private readonly label: string | undefined,
-  ) {}
-
-  private signed(): string {
-    if (this.label === undefined) {
-      throw new Error('Action signée : aucun signer (ajoute des signers ou un défaut).');
-    }
-    return this.label;
+/** Agents (API wallets). Le dead-man's switch est unifié sous `account().armCancelAll()`. */
+class HyperliquidAgentsScope extends HyperliquidNativeScope implements IAgents {
+  public approve(params: Parameters<typeof approveAgent>[1]) {
+    return approveAgent(this.client, params, this.signed());
   }
+}
 
-  /** Autorise une API/agent wallet à signer pour le compte. */
-  public approveAgent(input: {
-    agentAddress: `0x${string}`;
-    agentName?: string;
-  }): Promise<unknown> {
-    return approveAgent(this.client, input, this.signed());
+/** Transferts : USDC, bascule perp↔spot, token spot. */
+class HyperliquidTransfersScope extends HyperliquidNativeScope implements ITransfers {
+  public usdSend(params: Parameters<typeof usdSend>[1]) {
+    return usdSend(this.client, params, this.signed());
   }
-  /** Programme (ou désactive avec `time` omis) l'annulation automatique de tous les ordres. */
-  public scheduleCancel(input: { time?: number } = {}): Promise<unknown> {
-    return scheduleCancel(this.client, input, this.signed());
+  public usdClassTransfer(params: Parameters<typeof usdClassTransfer>[1]) {
+    return usdClassTransfer(this.client, params, this.signed());
+  }
+  public spotSend(params: Parameters<typeof spotSend>[1]) {
+    return spotSend(this.client, params, this.signed());
+  }
+}
+
+/** Données de marché supplémentaires : **publiques** (label optionnel). */
+class HyperliquidMarketDataScope extends HyperliquidNativeScope implements IMarketDataExtra {
+  public allMids(dex?: string) {
+    return getAllMids(this.client, dex, this.label);
+  }
+  public candleSnapshot(params: Parameters<typeof getCandleSnapshot>[1]) {
+    return getCandleSnapshot(this.client, params, this.label);
+  }
+  public metaAndAssetCtxs() {
+    return getMetaAndAssetCtxs(this.client, this.label);
+  }
+  public metaAndAssetCtxsSpot() {
+    return getMetaAndAssetCtxsSpot(this.client, this.label);
+  }
+  public frontendOpenOrders(params: Parameters<typeof getFrontendOpenOrders>[1]) {
+    return getFrontendOpenOrders(this.client, params, this.label);
+  }
+}
+
+/** Ordres avancés : batch place/cancel/modify, annulation par client id, query, fills par période. */
+class HyperliquidAdvancedOrdersScope extends HyperliquidNativeScope implements IAdvancedOrders {
+  public placeBatch(orders: Parameters<typeof placeOrders>[1]) {
+    return placeOrders(this.client, orders, this.signed());
+  }
+  public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
+    return cancelOrders(this.client, params, this.signed());
+  }
+  public cancelManyByClientId(params: Parameters<typeof cancelOrdersByCloid>[1]) {
+    return cancelOrdersByCloid(this.client, params, this.signed());
+  }
+  public modifyBatch(params: Parameters<typeof batchModifyOrders>[1]) {
+    return batchModifyOrders(this.client, params, this.signed());
+  }
+  public query(params: Parameters<typeof getOrderStatus>[1]) {
+    return getOrderStatus(this.client, params, this.label);
+  }
+  public fillsByTime(params: Parameters<typeof getUserFillsByTime>[1]) {
+    return getUserFillsByTime(this.client, params, this.label);
   }
 }
 
@@ -519,14 +554,19 @@ export class Hyperliquid {
     return new HyperliquidRealtime(this.unifiedWs(resolved), 'spot', this.userOf(resolved));
   }
 
-  /** Scope **transferts** (spécifique HL). */
-  public transfers(label?: string): HyperliquidTransfers {
-    return new HyperliquidTransfers(this.client, this.resolve(label));
-  }
-
-  /** Scope **agent** (spécifique HL). */
-  public agent(label?: string): HyperliquidAgent {
-    return new HyperliquidAgent(this.client, this.resolve(label));
+  /**
+   * Surplus **spécifique Hyperliquid** (hors contrat commun), accès uniforme
+   * `dex.native.<capacité>(label?)` : `agents`, `transfers`, `marketData`, `advancedOrders`.
+   */
+  public get native() {
+    const resolve = (label?: string) => this.resolve(label);
+    return {
+      agents: (label?: string) => new HyperliquidAgentsScope(this.client, resolve(label)),
+      transfers: (label?: string) => new HyperliquidTransfersScope(this.client, resolve(label)),
+      marketData: (label?: string) => new HyperliquidMarketDataScope(this.client, resolve(label)),
+      advancedOrders: (label?: string) =>
+        new HyperliquidAdvancedOrdersScope(this.client, resolve(label)),
+    };
   }
 
   /** Adresse du compte associée à un label (pour les flux user-data WS). */

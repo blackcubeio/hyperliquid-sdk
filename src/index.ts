@@ -8,6 +8,9 @@ export { Hyperliquid, type HyperliquidDexOptions } from './dex/hyperliquid';
 /** Contrat : interfaces de capacités + types d'entrée (Input) des méthodes. */
 export type * from './dex/contract';
 
+/** Interfaces **complémentaires** Hyperliquid (surplus via `dex.native.<capacité>()`). */
+export type * from './dex/hyperliquid-contract';
+
 /** Configuration d'un signer (passé au constructeur) et réseau. */
 export type { Signer, Network } from './common/types';
 
