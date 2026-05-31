@@ -117,8 +117,9 @@ import type {
   WithdrawParams,
 } from './contract';
 import type {
+  AccountHistoryParams,
   IAgents,
-  IBuilderFee,
+  IBuilders,
   INativeAccount,
   INativeMarket,
   INativeOrders,
@@ -594,41 +595,35 @@ class HyperliquidSubAccountsScope extends HyperliquidNativeScope implements ISub
   public create(params: Parameters<typeof createSubAccount>[1]) {
     return createSubAccount(this.client, params, this.signed());
   }
-  public transfer(params: Parameters<typeof subAccountTransfer>[1]) {
-    return subAccountTransfer(this.client, params, this.signed());
-  }
-  public spotTransfer(params: Parameters<typeof subAccountSpotTransfer>[1]) {
-    return subAccountSpotTransfer(this.client, params, this.signed());
-  }
   public modify(params: Parameters<typeof subAccountModify>[1]) {
     return subAccountModify(this.client, params, this.signed());
   }
-  public list() {
+  public getList() {
     return getSubAccounts(this.client, { user: this.user() }, this.signed());
   }
 }
 
 /** Données de marché supplémentaires : **publiques** (label optionnel). */
 class HyperliquidMarketDataScope extends HyperliquidNativeScope implements INativeMarket {
-  public allMids(dex?: string) {
+  public getAllMids(dex?: string) {
     return getAllMids(this.client, dex, this.label);
   }
-  public candleSnapshot(params: Parameters<typeof getCandleSnapshot>[1]) {
+  public getCandleSnapshot(params: Parameters<typeof getCandleSnapshot>[1]) {
     return getCandleSnapshot(this.client, params, this.label);
   }
-  public metaAndAssetCtxs() {
+  public getMetaAndAssetCtxs() {
     return getMetaAndAssetCtxs(this.client, this.label);
   }
-  public metaAndAssetCtxsSpot() {
+  public getMetaAndAssetCtxsSpot() {
     return getMetaAndAssetCtxsSpot(this.client, this.label);
   }
-  public frontendOpenOrders(params: Parameters<typeof getFrontendOpenOrders>[1]) {
+  public getFrontendOpenOrders(params: Parameters<typeof getFrontendOpenOrders>[1]) {
     return getFrontendOpenOrders(this.client, params, this.label);
   }
-  public predictedFundings() {
+  public getPredictedFundings() {
     return getPredictedFundings(this.client, this.label);
   }
-  public perpDexs() {
+  public getPerpDexs() {
     return getPerpDexs(this.client, this.label);
   }
 }
@@ -647,31 +642,30 @@ class HyperliquidVaultsScope extends HyperliquidNativeScope implements IVaults {
   public distribute(params: Parameters<typeof vaultDistribute>[1]) {
     return vaultDistribute(this.client, params, this.signed());
   }
-  public details(params: Parameters<typeof getVaultDetails>[1]) {
+  public getDetails(params: Parameters<typeof getVaultDetails>[1]) {
     return getVaultDetails(this.client, params, this.label);
   }
-  public equities() {
+  public getEquities() {
     return getUserVaultEquities(this.client, { user: this.user() }, this.signed());
   }
 }
 
-/** TWAP : placement, annulation, fills des slices. */
 /** Parrainage : code (une seule fois), lecture de l'état. */
 class HyperliquidReferralScope extends HyperliquidNativeScope implements IReferral {
   public set(params: Parameters<typeof setReferrer>[1]) {
     return setReferrer(this.client, params, this.signed());
   }
-  public info() {
+  public getInfo() {
     return getReferral(this.client, { user: this.user() }, this.signed());
   }
 }
 
-/** Builder fee : autorisation, lecture du fee max approuvé. */
-class HyperliquidBuilderFeeScope extends HyperliquidNativeScope implements IBuilderFee {
+/** Builders (fee builders) : autorisation, lecture du fee max approuvé. */
+class HyperliquidBuildersScope extends HyperliquidNativeScope implements IBuilders {
   public approve(params: Parameters<typeof approveBuilderFee>[1]) {
     return approveBuilderFee(this.client, params, this.signed());
   }
-  public max(params: Parameters<typeof getMaxBuilderFee>[1]) {
+  public getMaxFee(params: Parameters<typeof getMaxBuilderFee>[1]) {
     return getMaxBuilderFee(this.client, params, this.label);
   }
 }
@@ -687,45 +681,57 @@ class HyperliquidStakingScope extends HyperliquidNativeScope implements IStaking
   public delegate(params: Parameters<typeof tokenDelegate>[1]) {
     return tokenDelegate(this.client, params, this.signed());
   }
-  public delegations() {
+  public getDelegations() {
     return getDelegations(this.client, { user: this.user() }, this.signed());
   }
-  public summary() {
+  public getSummary() {
     return getDelegatorSummary(this.client, { user: this.user() }, this.signed());
   }
-  public history() {
+  public getHistory() {
     return getDelegatorHistory(this.client, { user: this.user() }, this.signed());
   }
-  public rewards() {
+  public getRewards() {
     return getDelegatorRewards(this.client, { user: this.user() }, this.signed());
   }
 }
 
 /** Lectures de compte étendues : par adresse du signer (résolue par le scope). */
 class HyperliquidAccountScope extends HyperliquidNativeScope implements INativeAccount {
-  public fees() {
+  public getFees() {
     return getUserFees(this.client, { user: this.user() }, this.signed());
   }
-  public portfolio() {
+  public getPortfolio() {
     return getPortfolio(this.client, { user: this.user() }, this.signed());
   }
-  public funding(query: { startTime: number; endTime?: number }) {
-    return getUserFunding(this.client, { user: this.user(), ...query }, this.signed());
-  }
-  public ledger(query: { startTime: number; endTime?: number }) {
-    return getUserNonFundingLedgerUpdates(
+  public getFunding(query: AccountHistoryParams) {
+    return getUserFunding(
       this.client,
-      { user: this.user(), ...query },
+      {
+        user: this.user(),
+        startTime: dateToMs(query.startTime),
+        endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
+      },
       this.signed(),
     );
   }
-  public role() {
+  public getLedger(query: AccountHistoryParams) {
+    return getUserNonFundingLedgerUpdates(
+      this.client,
+      {
+        user: this.user(),
+        startTime: dateToMs(query.startTime),
+        endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
+      },
+      this.signed(),
+    );
+  }
+  public getRole() {
     return getUserRole(this.client, { user: this.user() }, this.signed());
   }
-  public rateLimit() {
+  public getRateLimit() {
     return getUserRateLimit(this.client, { user: this.user() }, this.signed());
   }
-  public historicalOrders() {
+  public getHistoricalOrders() {
     return getHistoricalOrders(this.client, { user: this.user() }, this.signed());
   }
 }
@@ -811,8 +817,8 @@ export class Hyperliquid {
       vaults: (label?: string) => new HyperliquidVaultsScope(this.client, resolve(label)),
       /** Parrainage : code, état. */
       referral: (label?: string) => new HyperliquidReferralScope(this.client, resolve(label)),
-      /** Builder fee : autorisation, fee max. */
-      builderFee: (label?: string) => new HyperliquidBuilderFeeScope(this.client, resolve(label)),
+      /** Builders (fee builders) : autorisation, fee max. */
+      builders: (label?: string) => new HyperliquidBuildersScope(this.client, resolve(label)),
     };
   }
 
