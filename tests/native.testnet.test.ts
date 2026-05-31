@@ -177,24 +177,23 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     const mark = Number(prices.find((p) => p.name === 'BTC')?.mid ?? '0');
     const price = String(Math.max(1, Math.round(mark * 0.5)));
 
-    const res = (await dex.native
+    // placeBatch normalisé : entrée vocab commun, sortie Order[] (type commun).
+    const orders = await dex.native
       .perp()
-      .placeBatch([{ asset, isBuy: true, price, size: '0.001', tif: 'Alo' }])) as {
-      response?: { data?: { statuses?: Array<{ resting?: { oid: number } }> } };
-    };
-    const oid = res.response?.data?.statuses?.[0]?.resting?.oid;
-    console.log('placeBatch resting oid:', oid);
-    expect(typeof oid).toBe('number');
+      .placeBatch([{ name: 'BTC', side: 'buy', type: 'limit', price, size: '0.001', tif: 'alo' }]);
+    const order = orders[0];
+    console.log('placeBatch order:', JSON.stringify(order));
+    expect(order?.name).toBe('BTC');
+    expect(order?.side).toBe('buy');
+    expect(order?.id).not.toBe('');
+    const oid = Number(order?.id);
 
-    // Lecture signée : statut de l'ordre reposé.
-    const status = await dex.native.perp().getById({
-      user: account as `0x${string}`,
-      oid: oid as number,
-    });
+    // Lecture signée (getById encore natif dans cette référence).
+    const status = await dex.native.perp().getById({ user: account as `0x${string}`, oid });
     expect(status).toBeDefined();
 
-    // Annulation par lot.
-    const cancel = await dex.native.perp().cancelMany([{ asset, oid: oid as number }]);
+    // Annulation par lot (cancelMany encore natif).
+    const cancel = await dex.native.perp().cancelMany([{ asset, oid }]);
     expect(cancel).toBeDefined();
   }, 30_000);
 });

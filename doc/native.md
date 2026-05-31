@@ -37,12 +37,12 @@ Formes natives assumées (shapes par **index d'actif**) — hors contrat portabl
 | `getFrontendOpenOrders(p)` | `{ user: 0x; dex? }` | `Promise<FrontendOrder[]>` |
 | `getPredictedFundings()` | — | `Promise<unknown>` |
 | `getPerpDexs()` | — | `Promise<unknown>` |
-| `placeBatch(orders)` | `PlaceBatchParams` | `Promise<unknown>` (statuses) |
-| `cancelMany(cancels)` | `CancelManyParams` | `Promise<unknown>` |
-| `cancelManyByClientId(cancels)` | `CancelManyByClientIdParams` | `Promise<unknown>` |
-| `editBatch(modifies)` | `EditBatchParams` | `Promise<unknown>` |
-| `getById(p)` | `{ user: 0x; oid: number \| 0x }` | `Promise<OrderStatusResponse>` |
-| `getFills(p)` | `{ user: 0x; startTime; endTime? }` | `Promise<UserFill[]>` |
+| `placeBatch(orders)` | `PlaceOrderParams[]` (vocab commun) | **`Promise<Order[]>`** (1 par leg) |
+| `cancelMany(cancels)` | `CancelManyParams` | `Promise<unknown>` *(I/O encore natif — rollout)* |
+| `cancelManyByClientId(cancels)` | `CancelManyByClientIdParams` | `Promise<unknown>` *(rollout)* |
+| `editBatch(modifies)` | `EditBatchParams` | `Promise<unknown>` *(rollout)* |
+| `getById(p)` | `{ user: 0x; oid }` | `Promise<OrderStatusResponse>` *(rollout)* |
+| `getFills(p)` | `{ startTime; endTime? }` (datetime) | **`Promise<UserTrade[]>`** |
 | `placeTwap(p)` | `TwapOrderParams` | `Promise<unknown>` (twapId) |
 | `cancelTwap(p)` | `TwapCancelParams` | `Promise<unknown>` |
 | `getTwapFills()` | — | `Promise<unknown>` (fills des slices) |
@@ -52,13 +52,13 @@ Formes natives assumées (shapes par **index d'actif**) — hors contrat portabl
 await dex.native.perp().getAllMids();
 await dex.native.perp().getMetaAndAssetCtxs();
 await dex.native.perp().getCandleSnapshot({ coin: 'BTC', interval: '1h', startTime: Date.now() - 6 * 3600_000 });
-// ordres avancés (formes natives par index d'actif)
-const res = await dex.native.perp().placeBatch([{ asset: 0, isBuy: true, price: '50000', size: '0.001', tif: 'Alo' }]);
-const oid = res.response.data.statuses[0].resting.oid;
-await dex.native.perp().getById({ user: '0x…', oid });
-await dex.native.perp().cancelMany([{ asset: 0, oid }]);
-await dex.native.perp().editBatch([{ oid, order: { asset: 0, isBuy: true, price: '49000', size: '0.001' } }]);
-await dex.native.perp().getFills({ user: '0x…', startTime: Date.now() - 86_400_000 });
+// ordres avancés — I/O normalisés (vocab commun + types communs)
+const orders = await dex.native.perp().placeBatch([
+  { name: 'BTC', side: 'buy', type: 'limit', price: '50000', size: '0.001', tif: 'alo' },
+]); // → Order[]
+const fills = await dex.native.perp().getFills({ startTime: '2026-05-31 00:00:00' }); // → UserTrade[]
+// (cancelMany / cancelManyByClientId / editBatch / getById : I/O encore natif, normalisés au rollout)
+await dex.native.perp().cancelMany([{ asset: 0, oid: Number(orders[0].id) }]);
 const twap = await dex.native.perp().placeTwap({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
 await dex.native.perp().cancelTwap({ asset: 0, twapId: 123 });
 await dex.native.perp().getTwapFills();

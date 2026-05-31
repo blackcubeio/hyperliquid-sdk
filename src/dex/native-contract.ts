@@ -5,6 +5,7 @@
 // équivalent commun (agents/builders/vaults/staking/subAccounts/referral) restent propres.
 // Lectures get-préfixées, écritures = verbes nus, entrées `…Params`.
 
+import type { Order, UserTrade } from '../common/types';
 import type { approveAgent } from '../rest/exchange/approve-agent';
 import type { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
 import type { cDeposit } from '../rest/exchange/c-deposit';
@@ -41,7 +42,6 @@ import type { getPredictedFundings } from '../rest/info/get-predicted-fundings';
 import type { getReferral } from '../rest/info/get-referral';
 import type { getSubAccounts } from '../rest/info/get-sub-accounts';
 import type { getUserFees } from '../rest/info/get-user-fees';
-import type { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
 import type { getUserFunding } from '../rest/info/get-user-funding';
 import type { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
 import type { getUserRateLimit } from '../rest/info/get-user-rate-limit';
@@ -49,6 +49,7 @@ import type { getUserRole } from '../rest/info/get-user-role';
 import type { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import type { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import type { getVaultDetails } from '../rest/info/get-vault-details';
+import type { PlaceOrderParams } from './contract';
 
 /** `params` (2ᵉ arg) d'une fonction REST `fn(client, params, label)`. */
 type Args<F extends (...a: never[]) => unknown> = Parameters<F>[1];
@@ -105,8 +106,9 @@ export interface ISubAccountsAdmin {
 
 /**
  * Surplus **perp** HL spécifique, accès `dex.native.perp(label?)` (miroir natif de `dex.perp()`) :
- * lectures marché supplémentaires (get-préfixées, publiques) **+** ordres avancés (batch/cloid/edit/
- * lecture/fills/TWAP). Hors contrat portable — formes natives assumées (shapes par index d'actif).
+ * lectures marché supplémentaires (publiques) **+** ordres avancés. **Même discipline d'I/O que le
+ * commun** : entrées en vocabulaire commun (`name`/`side`/`size`/`price`…), sorties via convertisseurs
+ * qui **réutilisent les types communs** (`Order`/`UserTrade`) quand le concept existe.
  */
 export interface INativePerp {
   // ── lectures marché supplémentaires (publiques) ──
@@ -119,13 +121,15 @@ export interface INativePerp {
   ): ReturnType<typeof getFrontendOpenOrders>;
   getPredictedFundings(): ReturnType<typeof getPredictedFundings>;
   getPerpDexs(): ReturnType<typeof getPerpDexs>;
-  // ── ordres avancés (signés ; formes natives par index d'actif) ──
-  placeBatch(orders: PlaceBatchParams): ReturnType<typeof placeOrders>;
+  // ── ordres avancés (signés ; I/O normalisés, types communs) ──
+  /** Lot d'ordres — entrée `PlaceOrderParams[]` (vocab commun), sortie `Order[]` (1 par leg). */
+  placeBatch(orders: PlaceOrderParams[]): Promise<Order[]>;
   cancelMany(params: CancelManyParams): ReturnType<typeof cancelOrders>;
   cancelManyByClientId(params: CancelManyByClientIdParams): ReturnType<typeof cancelOrdersByCloid>;
   editBatch(params: EditBatchParams): ReturnType<typeof batchModifyOrders>;
   getById(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
-  getFills(params: Args<typeof getUserFillsByTime>): ReturnType<typeof getUserFillsByTime>;
+  /** Fills du compte (fenêtre datetime `YYYY-MM-DD HH:MM:SS`) → `UserTrade[]` (type commun). */
+  getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]>;
   placeTwap(params: TwapOrderParams): ReturnType<typeof twapOrder>;
   cancelTwap(params: TwapCancelParams): ReturnType<typeof twapCancel>;
   getTwapFills(): ReturnType<typeof getUserTwapSliceFills>;
