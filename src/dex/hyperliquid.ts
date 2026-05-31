@@ -90,12 +90,12 @@ import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signi
 import { updateLeverage } from '../rest/update-leverage';
 import { UnifiedWsClient } from '../ws/unified-client';
 import type {
-  CancelAllInput,
-  CancelOrderInput,
-  CandlesQuery,
-  EditOrderInput,
+  CancelAllParams,
+  CancelOrderParams,
+  CandlesParams,
+  EditOrderParams,
   EvmHelper,
-  FundingQuery,
+  FundingParams,
   IAccount,
   IDeadManSwitch,
   IIsolatedMargin,
@@ -106,14 +106,14 @@ import type {
   IRealtime,
   IRemovableMargin,
   ITrading,
-  IsolatedMarginInput,
+  IsolatedMarginParams,
   KeyHelper,
-  LeverageInput,
-  MarginModeInput,
-  OrderBookQuery,
-  PlaceOrderInput,
-  SymbolQuery,
-  WithdrawInput,
+  LeverageParams,
+  MarginModeParams,
+  OrderBookParams,
+  PlaceOrderParams,
+  SymbolParams,
+  WithdrawParams,
 } from './contract';
 import type {
   IAdvancedOrders,
@@ -201,7 +201,7 @@ class HyperliquidMarket
       pairs.filter((pair) => pair.kind === this.kind),
     );
   }
-  public getCandles(query: CandlesQuery): Promise<Candle[]> {
+  public getCandles(query: CandlesParams): Promise<Candle[]> {
     const startTime =
       query.startTime ?? Date.now() - (query.limit ?? 500) * intervalToMs(query.interval);
     return getCandles(
@@ -217,7 +217,7 @@ class HyperliquidMarket
       this.label,
     );
   }
-  public getOrderBook(query: OrderBookQuery): Promise<OrderBook> {
+  public getOrderBook(query: OrderBookParams): Promise<OrderBook> {
     return getOrderBook(
       this.client,
       { name: query.name, limit: query.limit, kind: this.kind },
@@ -227,7 +227,7 @@ class HyperliquidMarket
   public getPrices(): Promise<Price[]> {
     return getPrices(this.client, this.label);
   }
-  public getFundingHistory(query: FundingQuery): Promise<FundingRate[]> {
+  public getFundingHistory(query: FundingParams): Promise<FundingRate[]> {
     return getFundingHistory(
       this.client,
       { name: query.name, startTime: query.startTime ?? 0, endTime: query.endTime },
@@ -243,13 +243,13 @@ class HyperliquidMarket
   }
 
   // ── IProductAccount ──
-  public getPositions(query?: SymbolQuery): Promise<Position[]> {
+  public getPositions(query?: SymbolParams): Promise<Position[]> {
     return getPositions(this.client, { user: this.user(), name: query?.name }, this.signed());
   }
-  public getOpenOrders(query?: SymbolQuery): Promise<Order[]> {
+  public getOpenOrders(query?: SymbolParams): Promise<Order[]> {
     return getOpenOrders(this.client, { user: this.user(), name: query?.name }, this.signed());
   }
-  public getUserTrades(query?: SymbolQuery): Promise<UserTrade[]> {
+  public getUserTrades(query?: SymbolParams): Promise<UserTrade[]> {
     return getUserTrades(this.client, { user: this.user(), name: query?.name }, this.signed());
   }
   public getAccountInfo(): Promise<unknown> {
@@ -260,7 +260,7 @@ class HyperliquidMarket
   }
 
   // ── ITrading ──
-  public placeOrder(input: PlaceOrderInput): Promise<Order> {
+  public placeOrder(input: PlaceOrderParams): Promise<Order> {
     if (input.type !== 'limit' && input.type !== 'market') {
       throw new Error(
         `placeOrder (Hyperliquid) : type "${input.type}" non supporté (limit/market).`,
@@ -287,7 +287,7 @@ class HyperliquidMarket
       this.signed(),
     );
   }
-  public cancelOrder(input: CancelOrderInput): Promise<void> {
+  public cancelOrder(input: CancelOrderParams): Promise<void> {
     if (input.id === undefined) {
       throw new Error('cancelOrder (Hyperliquid) : `id` (oid) est requis.');
     }
@@ -297,14 +297,14 @@ class HyperliquidMarket
       this.signed(),
     );
   }
-  public cancelAllOrders(input: CancelAllInput): Promise<{ cancelled: number | null }> {
+  public cancelAllOrders(input: CancelAllParams): Promise<{ cancelled: number | null }> {
     return cancelAllOrders(
       this.client,
       { user: this.user(), name: input.name, kind: this.kind },
       this.signed(),
     );
   }
-  public editOrder(input: EditOrderInput): Promise<{ name: string; id: string }> {
+  public editOrder(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.id === undefined) {
       throw new Error('editOrder (Hyperliquid) : `id` (oid) est requis.');
     }
@@ -324,7 +324,7 @@ class HyperliquidMarket
       this.signed(),
     ).then((result) => ({ name: result.name, id: result.id }));
   }
-  public updateLeverage(input: LeverageInput): Promise<unknown> {
+  public updateLeverage(input: LeverageParams): Promise<unknown> {
     return updateLeverage(
       this.client,
       { name: input.name, leverage: input.leverage },
@@ -336,7 +336,7 @@ class HyperliquidMarket
   // updateLeverage(asset, isCross, leverage) est la seule action HL pour le mode de marge.
   // On préserve le levier courant (lu sur la position) ; sans position le levier courant n'est
   // pas lisible → on retombe sur 1× (conservateur). Le levier appliqué est renvoyé dans `xtras`.
-  public setMarginMode(input: MarginModeInput): Promise<void> {
+  public setMarginMode(input: MarginModeParams): Promise<void> {
     return this.getPositions({ name: input.name }).then((positions) => {
       const leverage = positions.find((p) => p.name === input.name)?.leverage ?? 1;
       return updateLeverage(
@@ -348,13 +348,13 @@ class HyperliquidMarket
   }
 
   // ── IIsolatedMargin / IRemovableMargin ──
-  public addIsolatedMargin(input: IsolatedMarginInput): Promise<void> {
+  public addIsolatedMargin(input: IsolatedMarginParams): Promise<void> {
     return this.adjustIsolatedMargin(input, 1);
   }
-  public removeIsolatedMargin(input: IsolatedMarginInput): Promise<void> {
+  public removeIsolatedMargin(input: IsolatedMarginParams): Promise<void> {
     return this.adjustIsolatedMargin(input, -1);
   }
-  private adjustIsolatedMargin(input: IsolatedMarginInput, sign: 1 | -1): Promise<void> {
+  private adjustIsolatedMargin(input: IsolatedMarginParams, sign: 1 | -1): Promise<void> {
     return Promise.all([
       getMeta(this.client, undefined, this.label),
       this.getPositions({ name: input.name }),
@@ -395,7 +395,7 @@ class HyperliquidAccount implements IAccount, IDeadManSwitch {
   public getBalances(): Promise<Balance[]> {
     return getBalances(this.client, { user: this.user() }, this.signed());
   }
-  public withdraw(input: WithdrawInput): Promise<unknown> {
+  public withdraw(input: WithdrawParams): Promise<unknown> {
     return withdraw(this.client, { amount: input.amount, address: input.address }, this.signed());
   }
 
