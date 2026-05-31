@@ -15,8 +15,6 @@ import type { batchModifyOrders } from '../rest/exchange/modify-order';
 import type { placeOrders } from '../rest/exchange/place-order';
 import type { setReferrer } from '../rest/exchange/set-referrer';
 import type { subAccountModify } from '../rest/exchange/sub-account-modify';
-import type { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
-import type { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import type { tokenDelegate } from '../rest/exchange/token-delegate';
 import type { twapCancel } from '../rest/exchange/twap-cancel';
 import type { twapOrder } from '../rest/exchange/twap-order';
@@ -58,105 +56,106 @@ type Args<F extends (...a: never[]) => unknown> = Parameters<F>[1];
 // partagés (`ApproveAgent`, `PlaceBatch`, `CancelMany`) sont **identiques** sur les autres SDK qui
 // portent le même geste ; les noms spécifiques HL restent descriptifs (« similaires »). Les lectures
 // gardent `Args<typeof fn>` en ligne (un type nommé pour un filtre de lecture n'apporte rien).
-// agents (`ApproveAgent` partagé inter-SDK)
-export type ApproveAgent = Args<typeof approveAgent>;
-// subAccounts (`CreateSubAccount` partagé inter-SDK)
-export type CreateSubAccount = Args<typeof createSubAccount>;
-export type SubAccountTransfer = Args<typeof subAccountTransfer>;
-export type SubAccountSpotTransfer = Args<typeof subAccountSpotTransfer>;
-export type SubAccountModify = Args<typeof subAccountModify>;
+// agents (`ApproveAgentParams` partagé inter-SDK)
+export type ApproveAgentParams = Args<typeof approveAgent>;
+// subAccounts (`CreateSubAccountParams` partagé inter-SDK)
+export type CreateSubAccountParams = Args<typeof createSubAccount>;
+export type SubAccountModifyParams = Args<typeof subAccountModify>;
 // staking
-export type StakingDeposit = Args<typeof cDeposit>;
-export type StakingWithdraw = Args<typeof cWithdraw>;
-export type Delegate = Args<typeof tokenDelegate>;
+export type StakingDepositParams = Args<typeof cDeposit>;
+export type StakingWithdrawParams = Args<typeof cWithdraw>;
+export type DelegateParams = Args<typeof tokenDelegate>;
 // vaults
-export type VaultTransfer = Args<typeof vaultTransfer>;
-export type CreateVault = Args<typeof createVault>;
-export type VaultModify = Args<typeof vaultModify>;
-export type VaultDistribute = Args<typeof vaultDistribute>;
-// twap / referral / builderFee
-export type TwapOrder = Args<typeof twapOrder>;
-export type TwapCancel = Args<typeof twapCancel>;
-export type SetReferrer = Args<typeof setReferrer>;
-export type ApproveBuilderFee = Args<typeof approveBuilderFee>;
-// advancedOrders (`PlaceBatch`/`CancelMany` partagés Aster)
-export type PlaceBatch = Args<typeof placeOrders>;
-export type CancelMany = Args<typeof cancelOrders>;
-export type CancelManyByClientId = Args<typeof cancelOrdersByCloid>;
-export type ModifyBatch = Args<typeof batchModifyOrders>;
+export type VaultTransferParams = Args<typeof vaultTransfer>;
+export type CreateVaultParams = Args<typeof createVault>;
+export type VaultModifyParams = Args<typeof vaultModify>;
+export type VaultDistributeParams = Args<typeof vaultDistribute>;
+// twap / referral / builders
+export type TwapOrderParams = Args<typeof twapOrder>;
+export type TwapCancelParams = Args<typeof twapCancel>;
+export type SetReferrerParams = Args<typeof setReferrer>;
+export type ApproveBuilderFeeParams = Args<typeof approveBuilderFee>;
+// orders (`PlaceBatchParams`/`CancelManyParams` partagés Aster)
+export type PlaceBatchParams = Args<typeof placeOrders>;
+export type CancelManyParams = Args<typeof cancelOrders>;
+export type CancelManyByClientIdParams = Args<typeof cancelOrdersByCloid>;
+export type EditBatchParams = Args<typeof batchModifyOrders>;
+/** Entrée — bornes datetime (`YYYY-MM-DD HH:MM:SS` UTC) des lectures de compte historiques. */
+export interface AccountHistoryParams {
+  startTime: string;
+  endTime?: string;
+}
 
 /** Agents (API wallets) — HL n'expose que l'autorisation. */
 export interface IAgents {
-  approve(params: ApproveAgent): ReturnType<typeof approveAgent>;
+  approve(params: ApproveAgentParams): ReturnType<typeof approveAgent>;
 }
 
-/** Sous-comptes HL : création, transferts (perp/spot) master↔sous-compte, renommage, liste. */
+/**
+ * Sous-comptes HL : création, renommage, liste. Les **transferts** master↔sous-compte sont sur le
+ * scope commun `transfers()`.
+ */
 export interface ISubAccountsAdmin {
-  create(params: CreateSubAccount): ReturnType<typeof createSubAccount>;
-  transfer(params: SubAccountTransfer): ReturnType<typeof subAccountTransfer>;
-  spotTransfer(params: SubAccountSpotTransfer): ReturnType<typeof subAccountSpotTransfer>;
-  modify(params: SubAccountModify): ReturnType<typeof subAccountModify>;
-  list(): ReturnType<typeof getSubAccounts>;
+  create(params: CreateSubAccountParams): ReturnType<typeof createSubAccount>;
+  modify(params: SubAccountModifyParams): ReturnType<typeof subAccountModify>;
+  getList(): ReturnType<typeof getSubAccounts>;
 }
 
-/** Données de marché supplémentaires HL (lectures **publiques**). */
+/** Données de marché supplémentaires HL (lectures **publiques**, get-préfixées). */
 export interface INativeMarket {
-  allMids(dex?: string): ReturnType<typeof getAllMids>;
-  candleSnapshot(params: Args<typeof getCandleSnapshot>): ReturnType<typeof getCandleSnapshot>;
-  metaAndAssetCtxs(): ReturnType<typeof getMetaAndAssetCtxs>;
-  metaAndAssetCtxsSpot(): ReturnType<typeof getMetaAndAssetCtxsSpot>;
-  frontendOpenOrders(
+  getAllMids(dex?: string): ReturnType<typeof getAllMids>;
+  getCandleSnapshot(params: Args<typeof getCandleSnapshot>): ReturnType<typeof getCandleSnapshot>;
+  getMetaAndAssetCtxs(): ReturnType<typeof getMetaAndAssetCtxs>;
+  getMetaAndAssetCtxsSpot(): ReturnType<typeof getMetaAndAssetCtxsSpot>;
+  getFrontendOpenOrders(
     params: Args<typeof getFrontendOpenOrders>,
   ): ReturnType<typeof getFrontendOpenOrders>;
-  predictedFundings(): ReturnType<typeof getPredictedFundings>;
-  perpDexs(): ReturnType<typeof getPerpDexs>;
+  getPredictedFundings(): ReturnType<typeof getPredictedFundings>;
+  getPerpDexs(): ReturnType<typeof getPerpDexs>;
 }
 
 /** Vaults HL : dépôt/retrait, création, réglages, distribution, lectures. */
 export interface IVaults {
-  transfer(params: VaultTransfer): ReturnType<typeof vaultTransfer>;
-  create(params: CreateVault): ReturnType<typeof createVault>;
-  modify(params: VaultModify): ReturnType<typeof vaultModify>;
-  distribute(params: VaultDistribute): ReturnType<typeof vaultDistribute>;
-  details(params: Args<typeof getVaultDetails>): ReturnType<typeof getVaultDetails>;
-  equities(): ReturnType<typeof getUserVaultEquities>;
+  transfer(params: VaultTransferParams): ReturnType<typeof vaultTransfer>;
+  create(params: CreateVaultParams): ReturnType<typeof createVault>;
+  modify(params: VaultModifyParams): ReturnType<typeof vaultModify>;
+  distribute(params: VaultDistributeParams): ReturnType<typeof vaultDistribute>;
+  getDetails(params: Args<typeof getVaultDetails>): ReturnType<typeof getVaultDetails>;
+  getEquities(): ReturnType<typeof getUserVaultEquities>;
 }
 
 /** Parrainage : définir son code (une seule fois), lire l'état de parrainage. */
 export interface IReferral {
-  set(params: SetReferrer): ReturnType<typeof setReferrer>;
-  info(): ReturnType<typeof getReferral>;
+  set(params: SetReferrerParams): ReturnType<typeof setReferrer>;
+  getInfo(): ReturnType<typeof getReferral>;
 }
 
-/** Builder fee : autoriser un fee builder, lire le fee max approuvé. */
-export interface IBuilderFee {
-  approve(params: ApproveBuilderFee): ReturnType<typeof approveBuilderFee>;
-  max(params: Args<typeof getMaxBuilderFee>): ReturnType<typeof getMaxBuilderFee>;
+/** Builders (fee builders) : autoriser un fee builder, lire le fee max approuvé. */
+export interface IBuilders {
+  approve(params: ApproveBuilderFeeParams): ReturnType<typeof approveBuilderFee>;
+  getMaxFee(params: Args<typeof getMaxBuilderFee>): ReturnType<typeof getMaxBuilderFee>;
 }
 
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation à un validateur, lectures. */
 export interface IStaking {
-  deposit(params: StakingDeposit): ReturnType<typeof cDeposit>;
-  withdraw(params: StakingWithdraw): ReturnType<typeof cWithdraw>;
-  delegate(params: Delegate): ReturnType<typeof tokenDelegate>;
-  delegations(): ReturnType<typeof getDelegations>;
-  summary(): ReturnType<typeof getDelegatorSummary>;
-  history(): ReturnType<typeof getDelegatorHistory>;
-  rewards(): ReturnType<typeof getDelegatorRewards>;
+  deposit(params: StakingDepositParams): ReturnType<typeof cDeposit>;
+  withdraw(params: StakingWithdrawParams): ReturnType<typeof cWithdraw>;
+  delegate(params: DelegateParams): ReturnType<typeof tokenDelegate>;
+  getDelegations(): ReturnType<typeof getDelegations>;
+  getSummary(): ReturnType<typeof getDelegatorSummary>;
+  getHistory(): ReturnType<typeof getDelegatorHistory>;
+  getRewards(): ReturnType<typeof getDelegatorRewards>;
 }
 
 /** Lectures de compte étendues HL (par adresse du signer ; `user` injecté par le scope). */
 export interface INativeAccount {
-  fees(): ReturnType<typeof getUserFees>;
-  portfolio(): ReturnType<typeof getPortfolio>;
-  funding(query: { startTime: number; endTime?: number }): ReturnType<typeof getUserFunding>;
-  ledger(query: {
-    startTime: number;
-    endTime?: number;
-  }): ReturnType<typeof getUserNonFundingLedgerUpdates>;
-  role(): ReturnType<typeof getUserRole>;
-  rateLimit(): ReturnType<typeof getUserRateLimit>;
-  historicalOrders(): ReturnType<typeof getHistoricalOrders>;
+  getFees(): ReturnType<typeof getUserFees>;
+  getPortfolio(): ReturnType<typeof getPortfolio>;
+  getFunding(query: AccountHistoryParams): ReturnType<typeof getUserFunding>;
+  getLedger(query: AccountHistoryParams): ReturnType<typeof getUserNonFundingLedgerUpdates>;
+  getRole(): ReturnType<typeof getUserRole>;
+  getRateLimit(): ReturnType<typeof getUserRateLimit>;
+  getHistoricalOrders(): ReturnType<typeof getHistoricalOrders>;
 }
 
 /**
@@ -165,13 +164,13 @@ export interface INativeAccount {
  * Verbes alignés inter-SDK (`placeBatch`/`cancelMany`/`editBatch`/`getById`/`getFills`/`placeTwap`…).
  */
 export interface INativeOrders {
-  placeBatch(orders: PlaceBatch): ReturnType<typeof placeOrders>;
-  cancelMany(params: CancelMany): ReturnType<typeof cancelOrders>;
-  cancelManyByClientId(params: CancelManyByClientId): ReturnType<typeof cancelOrdersByCloid>;
-  editBatch(params: ModifyBatch): ReturnType<typeof batchModifyOrders>;
+  placeBatch(orders: PlaceBatchParams): ReturnType<typeof placeOrders>;
+  cancelMany(params: CancelManyParams): ReturnType<typeof cancelOrders>;
+  cancelManyByClientId(params: CancelManyByClientIdParams): ReturnType<typeof cancelOrdersByCloid>;
+  editBatch(params: EditBatchParams): ReturnType<typeof batchModifyOrders>;
   getById(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
   getFills(params: Args<typeof getUserFillsByTime>): ReturnType<typeof getUserFillsByTime>;
-  placeTwap(params: TwapOrder): ReturnType<typeof twapOrder>;
-  cancelTwap(params: TwapCancel): ReturnType<typeof twapCancel>;
+  placeTwap(params: TwapOrderParams): ReturnType<typeof twapOrder>;
+  cancelTwap(params: TwapCancelParams): ReturnType<typeof twapCancel>;
   getTwapFills(): ReturnType<typeof getUserTwapSliceFills>;
 }

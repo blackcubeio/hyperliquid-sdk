@@ -28,11 +28,11 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
   it('native.account() : lectures par adresse (fees/role/rateLimit/portfolio/historicalOrders)', async () => {
     const acc = dex.native.account();
     const [fees, role, rateLimit, portfolio, hist] = await Promise.all([
-      acc.fees(),
-      acc.role(),
-      acc.rateLimit(),
-      acc.portfolio(),
-      acc.historicalOrders(),
+      acc.getFees(),
+      acc.getRole(),
+      acc.getRateLimit(),
+      acc.getPortfolio(),
+      acc.getHistoricalOrders(),
     ]);
     expect(fees).toBeDefined();
     expect(role).toBeDefined();
@@ -62,9 +62,9 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     }
   }, 30_000);
 
-  it('native.subAccounts() : list() + transfert USDC aller-retour si un sous-compte existe', async () => {
+  it('native.subAccounts().getList() + transfers() USDC aller-retour si un sous-compte existe', async () => {
     // HL renvoie `null` si le master n'a aucun sous-compte, sinon un tableau.
-    const subs = (await dex.native.subAccounts().list()) as Array<{
+    const subs = (await dex.native.subAccounts().getList()) as Array<{
       subAccountUser?: string;
     }> | null;
     console.log('sous-comptes:', JSON.stringify(subs));
@@ -77,20 +77,18 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
       );
       return;
     }
-    // Transfert réel master → sous-compte puis retour (laisse le solde inchangé).
-    const into = await dex.native
-      .subAccounts()
-      .transfer({ subAccountUser: sub, isDeposit: true, usd: '1' });
+    // Transfert réel master → sous-compte puis retour (laisse le solde inchangé), via transfers() commun.
+    const into = await dex.transfers().transfer({ to: { subAccount: sub }, amount: '1' });
     expect(into).toBeDefined();
-    const back = await dex.native
-      .subAccounts()
-      .transfer({ subAccountUser: sub, isDeposit: false, usd: '1' });
+    const back = await dex
+      .transfers()
+      .transfer({ from: { subAccount: sub }, to: { wallet: 'perp' }, amount: '1' });
     expect(back).toBeDefined();
     console.log('transfert sous-compte aller-retour OK sur', sub);
   }, 30_000);
 
   it('native.vaults() : equities() réel + chemin signé transfer (sans dépôt réel)', async () => {
-    const eq = await dex.native.vaults().equities();
+    const eq = await dex.native.vaults().getEquities();
     expect(eq).toBeDefined();
     // Chemin signé : un dépôt vault vers une adresse non-vault → rejet métier (signature acceptée).
     // create/modify/distribute (lockup 100 USD / possession requise) sont testés manuellement.
@@ -111,10 +109,10 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
   it('native.staking() : lectures réelles + chemin signé withdraw (sans lockup)', async () => {
     const st = dex.native.staking();
     const [del, sum, hist, rew] = await Promise.all([
-      st.delegations(),
-      st.summary(),
-      st.history(),
-      st.rewards(),
+      st.getDelegations(),
+      st.getSummary(),
+      st.getHistory(),
+      st.getRewards(),
     ]);
     expect(del).toBeDefined();
     expect(sum).toBeDefined();
@@ -135,8 +133,8 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     }
   }, 30_000);
 
-  it('perp().placeTwap() : place → cancel (réel) + referral.info() + builderFee.max()', async () => {
-    const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
+  it('perp().placeTwap() : place → cancel (réel) + referral.getInfo() + builders.getMaxFee()', async () => {
+    const [meta] = (await dex.native.marketData().getMetaAndAssetCtxs()) as [
       { universe: Array<{ name: string }> },
       unknown,
     ];
@@ -155,18 +153,18 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     }
 
     // Lectures réelles.
-    expect(await dex.native.referral().info()).toBeDefined();
+    expect(await dex.native.referral().getInfo()).toBeDefined();
     expect(
       await dex.native
-        .builderFee()
-        .max({ user: account as `0x${string}`, builder: account as `0x${string}` }),
+        .builders()
+        .getMaxFee({ user: account as `0x${string}`, builder: account as `0x${string}` }),
     ).toBeDefined();
-    // `referral.set` (one-shot) et `builderFee.approve` (persistant) sont testés manuellement.
+    // `referral.set` (one-shot) et `builders.approve` (persistant) sont testés manuellement.
   }, 30_000);
 
   it('perp() surplus ordres : placeBatch → getById → cancelMany', async () => {
     // Index d'actif BTC (perp) via la meta native.
-    const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
+    const [meta] = (await dex.native.marketData().getMetaAndAssetCtxs()) as [
       { universe: Array<{ name: string }> },
       unknown,
     ];

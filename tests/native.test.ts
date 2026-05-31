@@ -20,24 +20,24 @@ describe('Hyperliquid — namespace native (mainnet réel, public)', () => {
 
   it('native.marketData() — predictedFundings() + perpDexs()', async () => {
     const [pf, dexs] = await Promise.all([
-      dex.native.marketData().predictedFundings(),
-      dex.native.marketData().perpDexs(),
+      dex.native.marketData().getPredictedFundings(),
+      dex.native.marketData().getPerpDexs(),
     ]);
     expect(pf).toBeDefined();
     expect(dexs).toBeDefined();
   });
 
-  it('native.marketData().allMids()', async () => {
-    const mids = (await dex.native.marketData().allMids()) as Record<string, unknown>;
+  it('native.marketData().getAllMids()', async () => {
+    const mids = (await dex.native.marketData().getAllMids()) as Record<string, unknown>;
     expect(Object.keys(mids).length).toBeGreaterThan(0);
   });
 
-  it('native.marketData().metaAndAssetCtxs() + candleSnapshot()', async () => {
-    const meta = await dex.native.marketData().metaAndAssetCtxs();
+  it('native.marketData().getMetaAndAssetCtxs() + candleSnapshot()', async () => {
+    const meta = await dex.native.marketData().getMetaAndAssetCtxs();
     expect(meta).toBeDefined();
 
     const now = Date.now();
-    const candles = (await dex.native.marketData().candleSnapshot({
+    const candles = (await dex.native.marketData().getCandleSnapshot({
       coin: 'BTC',
       interval: '1h',
       startTime: now - 6 * 3600_000,
