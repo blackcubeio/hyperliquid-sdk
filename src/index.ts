@@ -32,5 +32,21 @@ export type {
   UserTrade,
 } from './common/types';
 
+/** Types **de sortie** spécifiques au namespace `native` (cf. `doc/native.md`). */
+export type { Ack } from './converters/ack';
+export type {
+  AccountFees,
+  AccountRole,
+  FundingPayment,
+  LedgerUpdate,
+  PortfolioWindow,
+  RateLimit,
+} from './converters/account';
+export type { CancelResult } from './converters/cancel';
+export type { ReferralInfo } from './converters/referral';
+export type { Delegation, StakingDelta, StakingReward, StakingSummary } from './converters/staking';
+export type { TwapPlacement } from './converters/twap';
+export type { VaultDetails, VaultEquity } from './converters/vault';
+
 /** Unsubscribe : valeur de retour des souscriptions WS. */
 export type { Unsubscribe } from './common/ws';
