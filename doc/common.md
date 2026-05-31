@@ -109,7 +109,7 @@ await dex.perp().removeIsolatedMargin({ name: 'BTC', amount: '50' });
 |---|---|---|
 | `getBalances()` | — | `Promise<Balance[]>` |
 | `withdraw(i)` | `WithdrawInput` | `Promise<unknown>` |
-| `getSubAccounts()` | — | `Promise<SubAccount[]>` *(absent : HL)* |
+| `getSubAccounts()` | — | `Promise<SubAccount[]>` *(absent du scope commun HL ; HL l'expose via `dex.native.subAccounts().getList()` → `SubAccount[]`)* |
 | `armCancelAll(afterMs)` | `number` | `Promise<unknown>` *(absent : Pacifica)* |
 | `disarm()` | — | `Promise<unknown>` *(absent : Pacifica)* |
 

@@ -5,45 +5,43 @@
 // équivalent commun (agents/builders/vaults/staking/subAccounts/referral) restent propres.
 // Lectures get-préfixées, écritures = verbes nus, entrées `…Params`.
 
-import type { Candle, Order, UserTrade } from '../common/types';
+import type { Candle, Order, Side, SubAccount, UserTrade } from '../common/types';
+import type {
+  AccountFees,
+  AccountRole,
+  FundingPayment,
+  LedgerUpdate,
+  PortfolioWindow,
+  RateLimit,
+} from '../converters/account';
+import type { Ack } from '../converters/ack';
+import type { CancelResult } from '../converters/cancel';
+import type { ReferralInfo } from '../converters/referral';
+import type {
+  Delegation,
+  StakingDelta,
+  StakingReward,
+  StakingSummary,
+} from '../converters/staking';
+import type { TwapPlacement } from '../converters/twap';
+import type { VaultDetails, VaultEquity } from '../converters/vault';
+import type { EditBatchLeg } from '../rest/edit-batch';
 import type { approveAgent } from '../rest/exchange/approve-agent';
 import type { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
 import type { cDeposit } from '../rest/exchange/c-deposit';
 import type { cWithdraw } from '../rest/exchange/c-withdraw';
-import type { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
-import type { cancelOrders } from '../rest/exchange/cancel-order';
 import type { createSubAccount } from '../rest/exchange/create-sub-account';
 import type { createVault } from '../rest/exchange/create-vault';
-import type { batchModifyOrders } from '../rest/exchange/modify-order';
-import type { placeOrders } from '../rest/exchange/place-order';
 import type { setReferrer } from '../rest/exchange/set-referrer';
 import type { subAccountModify } from '../rest/exchange/sub-account-modify';
 import type { tokenDelegate } from '../rest/exchange/token-delegate';
-import type { twapCancel } from '../rest/exchange/twap-cancel';
-import type { twapOrder } from '../rest/exchange/twap-order';
 import type { vaultDistribute } from '../rest/exchange/vault-distribute';
 import type { vaultModify } from '../rest/exchange/vault-modify';
 import type { vaultTransfer } from '../rest/exchange/vault-transfer';
-import type { getDelegations } from '../rest/info/get-delegations';
-import type { getDelegatorHistory } from '../rest/info/get-delegator-history';
-import type { getDelegatorRewards } from '../rest/info/get-delegator-rewards';
-import type { getDelegatorSummary } from '../rest/info/get-delegator-summary';
-import type { getHistoricalOrders } from '../rest/info/get-historical-orders';
-import type { getMaxBuilderFee } from '../rest/info/get-max-builder-fee';
 import type { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
 import type { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
 import type { getPerpDexs } from '../rest/info/get-perp-dexs';
-import type { getPortfolio } from '../rest/info/get-portfolio';
 import type { getPredictedFundings } from '../rest/info/get-predicted-fundings';
-import type { getReferral } from '../rest/info/get-referral';
-import type { getSubAccounts } from '../rest/info/get-sub-accounts';
-import type { getUserFees } from '../rest/info/get-user-fees';
-import type { getUserFunding } from '../rest/info/get-user-funding';
-import type { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
-import type { getUserRateLimit } from '../rest/info/get-user-rate-limit';
-import type { getUserRole } from '../rest/info/get-user-role';
-import type { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
-import type { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import type { getVaultDetails } from '../rest/info/get-vault-details';
 import type { PlaceOrderParams } from './contract';
 
@@ -69,16 +67,36 @@ export type VaultTransferParams = Args<typeof vaultTransfer>;
 export type CreateVaultParams = Args<typeof createVault>;
 export type VaultModifyParams = Args<typeof vaultModify>;
 export type VaultDistributeParams = Args<typeof vaultDistribute>;
-// twap / referral / builders
-export type TwapOrderParams = Args<typeof twapOrder>;
-export type TwapCancelParams = Args<typeof twapCancel>;
+// referral / builders
 export type SetReferrerParams = Args<typeof setReferrer>;
 export type ApproveBuilderFeeParams = Args<typeof approveBuilderFee>;
-// orders (`PlaceBatchParams`/`CancelManyParams` partagés Aster)
-export type PlaceBatchParams = Args<typeof placeOrders>;
-export type CancelManyParams = Args<typeof cancelOrders>;
-export type CancelManyByClientIdParams = Args<typeof cancelOrdersByCloid>;
-export type EditBatchParams = Args<typeof batchModifyOrders>;
+// ── ordres avancés — ENTRÉES en vocabulaire commun (`name`/`side`/`id`/`clientId`) ──
+/** Leg d'annulation par `id` (oid) — vocabulaire commun. */
+export interface CancelLegParams {
+  name: string;
+  id: string;
+}
+/** Leg d'annulation par `clientId` (cloid) — vocabulaire commun. */
+export interface CancelByClientIdLegParams {
+  name: string;
+  clientId: string;
+}
+/** Leg de modification d'un lot — vocabulaire commun (réutilise {@link EditBatchLeg}). */
+export type EditBatchLegParams = EditBatchLeg;
+/** Entrée `placeTwap` — vocabulaire commun (`name`/`side`/`size` ; bornes en minutes). */
+export interface TwapOrderParams {
+  name: string;
+  side: Side;
+  size: string;
+  minutes: number;
+  reduceOnly?: boolean;
+  randomize?: boolean;
+}
+/** Entrée `cancelTwap` — vocabulaire commun (`name`/`id` du TWAP). */
+export interface TwapCancelParams {
+  name: string;
+  id: string;
+}
 /** Entrée — bornes datetime (`YYYY-MM-DD HH:MM:SS` UTC) des lectures de compte historiques. */
 export interface AccountHistoryParams {
   startTime: string;
@@ -99,7 +117,7 @@ export interface CandleSnapshotParams {
 
 /** Agents (API wallets) — HL n'expose que l'autorisation. */
 export interface IAgents {
-  approve(params: ApproveAgentParams): ReturnType<typeof approveAgent>;
+  approve(params: ApproveAgentParams): Promise<Ack>;
 }
 
 /**
@@ -107,9 +125,10 @@ export interface IAgents {
  * scope commun `transfers()`.
  */
 export interface ISubAccountsAdmin {
-  create(params: CreateSubAccountParams): ReturnType<typeof createSubAccount>;
-  modify(params: SubAccountModifyParams): ReturnType<typeof subAccountModify>;
-  getList(): ReturnType<typeof getSubAccounts>;
+  create(params: CreateSubAccountParams): Promise<Ack>;
+  modify(params: SubAccountModifyParams): Promise<Ack>;
+  /** Liste des sous-comptes → `SubAccount[]` (type commun). */
+  getList(): Promise<SubAccount[]>;
 }
 
 /**
@@ -133,58 +152,79 @@ export interface INativePerp {
   // ── ordres avancés (signés ; I/O normalisés, types communs) ──
   /** Lot d'ordres — entrée `PlaceOrderParams[]` (vocab commun), sortie `Order[]` (1 par leg). */
   placeBatch(orders: PlaceOrderParams[]): Promise<Order[]>;
-  cancelMany(params: CancelManyParams): ReturnType<typeof cancelOrders>;
-  cancelManyByClientId(params: CancelManyByClientIdParams): ReturnType<typeof cancelOrdersByCloid>;
-  editBatch(params: EditBatchParams): ReturnType<typeof batchModifyOrders>;
+  /** Annulation par lot (par `id`/oid, vocab commun) → `CancelResult[]` (1 par leg). */
+  cancelMany(cancels: CancelLegParams[]): Promise<CancelResult[]>;
+  /** Annulation par lot (par `clientId`/cloid, vocab commun) → `CancelResult[]` (1 par leg). */
+  cancelManyByClientId(cancels: CancelByClientIdLegParams[]): Promise<CancelResult[]>;
+  /** Modification par lot (vocab commun) → `Order[]` (1 par leg modifié). */
+  editBatch(modifies: EditBatchLegParams[]): Promise<Order[]>;
   /** Statut d'un ordre par `id` → `Order` (type commun). */
   getById(params: { name: string; id: string }): Promise<Order>;
   /** Fills du compte (fenêtre datetime `YYYY-MM-DD HH:MM:SS`) → `UserTrade[]` (type commun). */
   getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]>;
-  placeTwap(params: TwapOrderParams): ReturnType<typeof twapOrder>;
-  cancelTwap(params: TwapCancelParams): ReturnType<typeof twapCancel>;
-  getTwapFills(): ReturnType<typeof getUserTwapSliceFills>;
+  /** Place un TWAP (vocab commun) → `TwapPlacement` (`id` du TWAP, `status`). */
+  placeTwap(params: TwapOrderParams): Promise<TwapPlacement>;
+  /** Annule un TWAP par `id` (vocab commun) → `Ack`. */
+  cancelTwap(params: TwapCancelParams): Promise<Ack>;
+  /** Fills des slices de TWAP → `UserTrade[]` (type commun, `twapId` dans `xtras`). */
+  getTwapFills(): Promise<UserTrade[]>;
 }
 
 /** Vaults HL : dépôt/retrait, création, réglages, distribution, lectures. */
 export interface IVaults {
-  transfer(params: VaultTransferParams): ReturnType<typeof vaultTransfer>;
-  create(params: CreateVaultParams): ReturnType<typeof createVault>;
-  modify(params: VaultModifyParams): ReturnType<typeof vaultModify>;
-  distribute(params: VaultDistributeParams): ReturnType<typeof vaultDistribute>;
-  getDetails(params: Args<typeof getVaultDetails>): ReturnType<typeof getVaultDetails>;
-  getEquities(): ReturnType<typeof getUserVaultEquities>;
+  transfer(params: VaultTransferParams): Promise<Ack>;
+  create(params: CreateVaultParams): Promise<Ack>;
+  modify(params: VaultModifyParams): Promise<Ack>;
+  distribute(params: VaultDistributeParams): Promise<Ack>;
+  /** Détails d'un vault → `VaultDetails`. */
+  getDetails(params: Args<typeof getVaultDetails>): Promise<VaultDetails>;
+  /** Équités du compte dans les vaults suivis → `VaultEquity[]`. */
+  getEquities(): Promise<VaultEquity[]>;
 }
 
 /** Parrainage : définir son code (une seule fois), lire l'état de parrainage. */
 export interface IReferral {
-  set(params: SetReferrerParams): ReturnType<typeof setReferrer>;
-  getInfo(): ReturnType<typeof getReferral>;
+  set(params: SetReferrerParams): Promise<Ack>;
+  /** État de parrainage → `ReferralInfo`. */
+  getInfo(): Promise<ReferralInfo>;
 }
 
 /** Builders (fee builders) : autoriser un fee builder, lire le fee max approuvé. */
 export interface IBuilders {
-  approve(params: ApproveBuilderFeeParams): ReturnType<typeof approveBuilderFee>;
-  getMaxFee(params: Args<typeof getMaxBuilderFee>): ReturnType<typeof getMaxBuilderFee>;
+  approve(params: ApproveBuilderFeeParams): Promise<Ack>;
+  /** Fee max approuvé (dixièmes de bps) → `number`. */
+  getMaxFee(params: { user: `0x${string}`; builder: `0x${string}` }): Promise<number>;
 }
 
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation à un validateur, lectures. */
 export interface IStaking {
-  deposit(params: StakingDepositParams): ReturnType<typeof cDeposit>;
-  withdraw(params: StakingWithdrawParams): ReturnType<typeof cWithdraw>;
-  delegate(params: DelegateParams): ReturnType<typeof tokenDelegate>;
-  getDelegations(): ReturnType<typeof getDelegations>;
-  getSummary(): ReturnType<typeof getDelegatorSummary>;
-  getHistory(): ReturnType<typeof getDelegatorHistory>;
-  getRewards(): ReturnType<typeof getDelegatorRewards>;
+  deposit(params: StakingDepositParams): Promise<Ack>;
+  withdraw(params: StakingWithdrawParams): Promise<Ack>;
+  delegate(params: DelegateParams): Promise<Ack>;
+  /** Délégations en cours → `Delegation[]`. */
+  getDelegations(): Promise<Delegation[]>;
+  /** Résumé de staking → `StakingSummary`. */
+  getSummary(): Promise<StakingSummary>;
+  /** Historique des opérations → `StakingDelta[]`. */
+  getHistory(): Promise<StakingDelta[]>;
+  /** Récompenses accumulées → `StakingReward[]`. */
+  getRewards(): Promise<StakingReward[]>;
 }
 
 /** Lectures de compte étendues HL (par adresse du signer ; `user` injecté par le scope). */
 export interface INativeAccount {
-  getFees(): ReturnType<typeof getUserFees>;
-  getPortfolio(): ReturnType<typeof getPortfolio>;
-  getFunding(query: AccountHistoryParams): ReturnType<typeof getUserFunding>;
-  getLedger(query: AccountHistoryParams): ReturnType<typeof getUserNonFundingLedgerUpdates>;
-  getRole(): ReturnType<typeof getUserRole>;
-  getRateLimit(): ReturnType<typeof getUserRateLimit>;
-  getHistoricalOrders(): ReturnType<typeof getHistoricalOrders>;
+  /** Frais du compte → `AccountFees`. */
+  getFees(): Promise<AccountFees>;
+  /** Portefeuille (séries valeur/PnL par fenêtre) → `PortfolioWindow[]`. */
+  getPortfolio(): Promise<PortfolioWindow[]>;
+  /** Paiements de funding (fenêtre datetime) → `FundingPayment[]`. */
+  getFunding(query: AccountHistoryParams): Promise<FundingPayment[]>;
+  /** Mouvements de ledger hors funding (fenêtre datetime) → `LedgerUpdate[]`. */
+  getLedger(query: AccountHistoryParams): Promise<LedgerUpdate[]>;
+  /** Rôle du compte → `AccountRole`. */
+  getRole(): Promise<AccountRole>;
+  /** Limites de requêtes → `RateLimit`. */
+  getRateLimit(): Promise<RateLimit>;
+  /** Ordres historiques → `Order[]` (type commun). */
+  getHistoricalOrders(): Promise<Order[]>;
 }

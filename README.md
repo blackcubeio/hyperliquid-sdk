@@ -124,6 +124,10 @@ Routes HL : perp↔spot (`usdClassTransfer`), `to:{subAccount}`, `to:{account}` 
 ### Surface `native` — spécifique Hyperliquid (`dex.native.<cap>()`)
 
 Le namespace `native` **miroite** le commun ; voir [`doc/native.md`](doc/native.md) pour le détail.
+Toutes les méthodes ont des **I/O normalisés** : entrées en vocabulaire commun (`name`/`side`/`id`…),
+sorties **typées** (types communs `Order`/`UserTrade`/`SubAccount`, ou types nommés dédiés `AccountFees`,
+`PortfolioWindow`, `TwapPlacement`, `CancelResult`, `VaultDetails`, `Delegation`, `Ack`… ; champs alignés
+sur le commun, natif complet dans `xtras`). Jamais de `unknown` ni de JSON natif brut.
 
 | Scope | Contenu |
 |---|---|

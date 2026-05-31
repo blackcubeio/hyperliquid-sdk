@@ -12,14 +12,58 @@ import type {
   Position,
   Price,
   Signer,
+  SubAccount,
   Trade,
   UserTrade,
 } from '../common/types';
 import { assetIndex, dateToMs } from '../common/utils';
+import {
+  type AccountFees,
+  AccountFeesConverter,
+  type AccountRole,
+  AccountRoleConverter,
+  type FundingPayment,
+  FundingPaymentConverter,
+  HistoricalOrderConverter,
+  type HistoricalOrderNative,
+  LedgerConverter,
+  type LedgerUpdate,
+  PortfolioConverter,
+  type PortfolioWindow,
+  type RateLimit,
+  RateLimitConverter,
+} from '../converters/account';
+import { type Ack, AckConverter, type AckNative } from '../converters/ack';
+import { CancelConverter, type CancelResult } from '../converters/cancel';
 import { FrontendOrderConverter } from '../converters/frontend-order';
+import { ReferralConverter, type ReferralInfo } from '../converters/referral';
+import {
+  type Delegation,
+  DelegationConverter,
+  type StakingDelta,
+  StakingHistoryConverter,
+  type StakingReward,
+  StakingRewardConverter,
+  type StakingSummary,
+  StakingSummaryConverter,
+} from '../converters/staking';
+import { SubAccountConverter, type SubAccountNative } from '../converters/sub-account';
+import {
+  TwapFillConverter,
+  type TwapPlacement,
+  TwapPlacementConverter,
+  type TwapSliceFillNative,
+} from '../converters/twap';
 import { UserTradeConverter } from '../converters/user-trade';
+import {
+  type VaultDetails,
+  VaultDetailsConverter,
+  type VaultEquity,
+  VaultEquityConverter,
+} from '../converters/vault';
 import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
+import { editBatchOrders } from '../rest/edit-batch';
 import { editOrder } from '../rest/edit-order';
 import { approveAgent } from '../rest/exchange/approve-agent';
 import { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
@@ -30,7 +74,6 @@ import { cancelOrders } from '../rest/exchange/cancel-order';
 import { createSubAccount } from '../rest/exchange/create-sub-account';
 import { createVault } from '../rest/exchange/create-vault';
 // ── Surplus spécifique HL (namespace native) ──
-import { batchModifyOrders } from '../rest/exchange/modify-order';
 import { scheduleCancel } from '../rest/exchange/schedule-cancel';
 import { setReferrer } from '../rest/exchange/set-referrer';
 import { spotSend } from '../rest/exchange/spot-send';
@@ -121,7 +164,10 @@ import type {
 } from './contract';
 import type {
   AccountHistoryParams,
+  CancelByClientIdLegParams,
+  CancelLegParams,
   CandleSnapshotParams,
+  EditBatchLegParams,
   IAgents,
   IBuilders,
   INativeAccount,
@@ -131,6 +177,8 @@ import type {
   ISubAccountsAdmin,
   IVaults,
   Mid,
+  TwapCancelParams,
+  TwapOrderParams,
 } from './native-contract';
 
 /** Options de construction d'un {@link Hyperliquid}. */
@@ -495,10 +543,13 @@ class HyperliquidNativeScope {
   }
 }
 
+/** Convertisseur d'accusé partagé par les écritures signées sans retour plus riche. */
+const ack = new AckConverter();
+
 /** Agents (API wallets). Le dead-man's switch est unifié sous `account().armCancelAll()`. */
 class HyperliquidAgentsScope extends HyperliquidNativeScope implements IAgents {
-  public approve(params: Parameters<typeof approveAgent>[1]) {
-    return approveAgent(this.client, params, this.signed());
+  public approve(params: Parameters<typeof approveAgent>[1]): Promise<Ack> {
+    return approveAgent<AckNative>(this.client, params, this.signed()).then((r) => ack.toCommon(r));
   }
 }
 
@@ -566,14 +617,20 @@ class HyperliquidTransfers extends HyperliquidNativeScope implements ITransfers 
 
 /** Sous-comptes : création, transferts (perp/spot) master↔sous-compte, renommage, liste. */
 class HyperliquidSubAccountsScope extends HyperliquidNativeScope implements ISubAccountsAdmin {
-  public create(params: Parameters<typeof createSubAccount>[1]) {
-    return createSubAccount(this.client, params, this.signed());
+  public create(params: Parameters<typeof createSubAccount>[1]): Promise<Ack> {
+    return createSubAccount<AckNative>(this.client, params, this.signed()).then((r) =>
+      ack.toCommon(r),
+    );
   }
-  public modify(params: Parameters<typeof subAccountModify>[1]) {
-    return subAccountModify(this.client, params, this.signed());
+  public modify(params: Parameters<typeof subAccountModify>[1]): Promise<Ack> {
+    return subAccountModify<AckNative>(this.client, params, this.signed()).then((r) =>
+      ack.toCommon(r),
+    );
   }
-  public getList() {
-    return getSubAccounts(this.client, { user: this.user() }, this.signed());
+  public getList(): Promise<SubAccount[]> {
+    return getSubAccounts(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new SubAccountConverter().toCommon(res as SubAccountNative[] | null),
+    );
   }
 }
 
@@ -625,14 +682,44 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
   public placeBatch(orders: PlaceOrderParams[]): Promise<Order[]> {
     return placeBatchOrders(this.client, orders, this.signed());
   }
-  public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
-    return cancelOrders(this.client, params, this.signed());
+  public cancelMany(cancels: CancelLegParams[]): Promise<CancelResult[]> {
+    return getMeta(this.client, undefined, this.label).then((meta) => {
+      const native = cancels.map((c) => ({
+        asset: assetIndex(meta.universe, c.name),
+        oid: Number(c.id),
+      }));
+      return cancelOrders<Parameters<CancelConverter['toCommon']>[0]>(
+        this.client,
+        native,
+        this.signed(),
+      ).then((res) =>
+        new CancelConverter().toCommon(
+          res,
+          cancels.map((c) => ({ id: c.id, clientId: null })),
+        ),
+      );
+    });
   }
-  public cancelManyByClientId(params: Parameters<typeof cancelOrdersByCloid>[1]) {
-    return cancelOrdersByCloid(this.client, params, this.signed());
+  public cancelManyByClientId(cancels: CancelByClientIdLegParams[]): Promise<CancelResult[]> {
+    return getMeta(this.client, undefined, this.label).then((meta) => {
+      const native = cancels.map((c) => ({
+        asset: assetIndex(meta.universe, c.name),
+        cloid: c.clientId as `0x${string}`,
+      }));
+      return cancelOrdersByCloid<Parameters<CancelConverter['toCommon']>[0]>(
+        this.client,
+        native,
+        this.signed(),
+      ).then((res) =>
+        new CancelConverter().toCommon(
+          res,
+          cancels.map((c) => ({ id: null, clientId: c.clientId })),
+        ),
+      );
+    });
   }
-  public editBatch(params: Parameters<typeof batchModifyOrders>[1]) {
-    return batchModifyOrders(this.client, params, this.signed());
+  public editBatch(modifies: EditBatchLegParams[]): Promise<Order[]> {
+    return editBatchOrders(this.client, modifies, this.signed());
   }
   public getById(params: { name: string; id: string }): Promise<Order> {
     return getOrderStatus(
@@ -663,93 +750,153 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
       this.signed(),
     ).then((fills) => fills.map((f) => converter.toCommon(f)));
   }
-  public placeTwap(params: Parameters<typeof twapOrder>[1]) {
-    return twapOrder(this.client, params, this.signed());
+  public placeTwap(params: TwapOrderParams): Promise<TwapPlacement> {
+    return getMeta(this.client, undefined, this.label).then((meta) =>
+      twapOrder<Parameters<TwapPlacementConverter['toCommon']>[0]>(
+        this.client,
+        {
+          asset: assetIndex(meta.universe, params.name),
+          isBuy: params.side === 'buy',
+          size: params.size,
+          reduceOnly: params.reduceOnly,
+          minutes: params.minutes,
+          randomize: params.randomize,
+        },
+        this.signed(),
+      ).then((res) =>
+        new TwapPlacementConverter().toCommon(res, {
+          name: params.name,
+          side: params.side,
+          size: params.size,
+        }),
+      ),
+    );
   }
-  public cancelTwap(params: Parameters<typeof twapCancel>[1]) {
-    return twapCancel(this.client, params, this.signed());
+  public cancelTwap(params: TwapCancelParams): Promise<Ack> {
+    return getMeta(this.client, undefined, this.label).then((meta) =>
+      twapCancel<Parameters<AckConverter['toCommon']>[0]>(
+        this.client,
+        { asset: assetIndex(meta.universe, params.name), twapId: Number(params.id) },
+        this.signed(),
+      ).then((res) => new AckConverter().toCommon(res)),
+    );
   }
-  public getTwapFills() {
-    return getUserTwapSliceFills(this.client, { user: this.user() as Hex }, this.signed());
+  public getTwapFills(): Promise<UserTrade[]> {
+    const converter = new TwapFillConverter();
+    return getUserTwapSliceFills(this.client, { user: this.user() as Hex }, this.signed()).then(
+      (fills) => ((fills as TwapSliceFillNative[] | null) ?? []).map((f) => converter.toCommon(f)),
+    );
   }
 }
 
 /** Vaults : dépôt/retrait, création, réglages, distribution, lectures. */
 class HyperliquidVaultsScope extends HyperliquidNativeScope implements IVaults {
-  public transfer(params: Parameters<typeof vaultTransfer>[1]) {
-    return vaultTransfer(this.client, params, this.signed());
+  public transfer(params: Parameters<typeof vaultTransfer>[1]): Promise<Ack> {
+    return vaultTransfer<AckNative>(this.client, params, this.signed()).then((r) =>
+      ack.toCommon(r),
+    );
   }
-  public create(params: Parameters<typeof createVault>[1]) {
-    return createVault(this.client, params, this.signed());
+  public create(params: Parameters<typeof createVault>[1]): Promise<Ack> {
+    return createVault<AckNative>(this.client, params, this.signed()).then((r) => ack.toCommon(r));
   }
-  public modify(params: Parameters<typeof vaultModify>[1]) {
-    return vaultModify(this.client, params, this.signed());
+  public modify(params: Parameters<typeof vaultModify>[1]): Promise<Ack> {
+    return vaultModify<AckNative>(this.client, params, this.signed()).then((r) => ack.toCommon(r));
   }
-  public distribute(params: Parameters<typeof vaultDistribute>[1]) {
-    return vaultDistribute(this.client, params, this.signed());
+  public distribute(params: Parameters<typeof vaultDistribute>[1]): Promise<Ack> {
+    return vaultDistribute<AckNative>(this.client, params, this.signed()).then((r) =>
+      ack.toCommon(r),
+    );
   }
-  public getDetails(params: Parameters<typeof getVaultDetails>[1]) {
-    return getVaultDetails(this.client, params, this.label);
+  public getDetails(params: Parameters<typeof getVaultDetails>[1]): Promise<VaultDetails> {
+    return getVaultDetails(this.client, params, this.label).then((res) =>
+      new VaultDetailsConverter().toCommon(res as Parameters<VaultDetailsConverter['toCommon']>[0]),
+    );
   }
-  public getEquities() {
-    return getUserVaultEquities(this.client, { user: this.user() }, this.signed());
+  public getEquities(): Promise<VaultEquity[]> {
+    return getUserVaultEquities(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new VaultEquityConverter().toCommon(res as Parameters<VaultEquityConverter['toCommon']>[0]),
+    );
   }
 }
 
 /** Parrainage : code (une seule fois), lecture de l'état. */
 class HyperliquidReferralScope extends HyperliquidNativeScope implements IReferral {
-  public set(params: Parameters<typeof setReferrer>[1]) {
-    return setReferrer(this.client, params, this.signed());
+  public set(params: Parameters<typeof setReferrer>[1]): Promise<Ack> {
+    return setReferrer<AckNative>(this.client, params, this.signed()).then((r) => ack.toCommon(r));
   }
-  public getInfo() {
-    return getReferral(this.client, { user: this.user() }, this.signed());
+  public getInfo(): Promise<ReferralInfo> {
+    return getReferral(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new ReferralConverter().toCommon(res as Parameters<ReferralConverter['toCommon']>[0]),
+    );
   }
 }
 
 /** Builders (fee builders) : autorisation, lecture du fee max approuvé. */
 class HyperliquidBuildersScope extends HyperliquidNativeScope implements IBuilders {
-  public approve(params: Parameters<typeof approveBuilderFee>[1]) {
-    return approveBuilderFee(this.client, params, this.signed());
+  public approve(params: Parameters<typeof approveBuilderFee>[1]): Promise<Ack> {
+    return approveBuilderFee<AckNative>(this.client, params, this.signed()).then((r) =>
+      ack.toCommon(r),
+    );
   }
-  public getMaxFee(params: Parameters<typeof getMaxBuilderFee>[1]) {
-    return getMaxBuilderFee(this.client, params, this.label);
+  public getMaxFee(params: { user: `0x${string}`; builder: `0x${string}` }): Promise<number> {
+    return getMaxBuilderFee(this.client, params, this.label).then((res) => Number(res));
   }
 }
 
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation, lectures. */
 class HyperliquidStakingScope extends HyperliquidNativeScope implements IStaking {
-  public deposit(params: Parameters<typeof cDeposit>[1]) {
-    return cDeposit(this.client, params, this.signed());
+  public deposit(params: Parameters<typeof cDeposit>[1]): Promise<Ack> {
+    return cDeposit<AckNative>(this.client, params, this.signed()).then((r) => ack.toCommon(r));
   }
-  public withdraw(params: Parameters<typeof cWithdraw>[1]) {
-    return cWithdraw(this.client, params, this.signed());
+  public withdraw(params: Parameters<typeof cWithdraw>[1]): Promise<Ack> {
+    return cWithdraw<AckNative>(this.client, params, this.signed()).then((r) => ack.toCommon(r));
   }
-  public delegate(params: Parameters<typeof tokenDelegate>[1]) {
-    return tokenDelegate(this.client, params, this.signed());
+  public delegate(params: Parameters<typeof tokenDelegate>[1]): Promise<Ack> {
+    return tokenDelegate<AckNative>(this.client, params, this.signed()).then((r) =>
+      ack.toCommon(r),
+    );
   }
-  public getDelegations() {
-    return getDelegations(this.client, { user: this.user() }, this.signed());
+  public getDelegations(): Promise<Delegation[]> {
+    return getDelegations(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new DelegationConverter().toCommon(res as Parameters<DelegationConverter['toCommon']>[0]),
+    );
   }
-  public getSummary() {
-    return getDelegatorSummary(this.client, { user: this.user() }, this.signed());
+  public getSummary(): Promise<StakingSummary> {
+    return getDelegatorSummary(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new StakingSummaryConverter().toCommon(
+        res as Parameters<StakingSummaryConverter['toCommon']>[0],
+      ),
+    );
   }
-  public getHistory() {
-    return getDelegatorHistory(this.client, { user: this.user() }, this.signed());
+  public getHistory(): Promise<StakingDelta[]> {
+    return getDelegatorHistory(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new StakingHistoryConverter().toCommon(
+        res as Parameters<StakingHistoryConverter['toCommon']>[0],
+      ),
+    );
   }
-  public getRewards() {
-    return getDelegatorRewards(this.client, { user: this.user() }, this.signed());
+  public getRewards(): Promise<StakingReward[]> {
+    return getDelegatorRewards(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new StakingRewardConverter().toCommon(
+        res as Parameters<StakingRewardConverter['toCommon']>[0],
+      ),
+    );
   }
 }
 
 /** Lectures de compte étendues : par adresse du signer (résolue par le scope). */
 class HyperliquidAccountScope extends HyperliquidNativeScope implements INativeAccount {
-  public getFees() {
-    return getUserFees(this.client, { user: this.user() }, this.signed());
+  public getFees(): Promise<AccountFees> {
+    return getUserFees(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new AccountFeesConverter().toCommon(res as Parameters<AccountFeesConverter['toCommon']>[0]),
+    );
   }
-  public getPortfolio() {
-    return getPortfolio(this.client, { user: this.user() }, this.signed());
+  public getPortfolio(): Promise<PortfolioWindow[]> {
+    return getPortfolio(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new PortfolioConverter().toCommon(res as Parameters<PortfolioConverter['toCommon']>[0]),
+    );
   }
-  public getFunding(query: AccountHistoryParams) {
+  public getFunding(query: AccountHistoryParams): Promise<FundingPayment[]> {
     return getUserFunding(
       this.client,
       {
@@ -758,9 +905,13 @@ class HyperliquidAccountScope extends HyperliquidNativeScope implements INativeA
         endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
       },
       this.signed(),
+    ).then((res) =>
+      new FundingPaymentConverter().toCommon(
+        res as Parameters<FundingPaymentConverter['toCommon']>[0],
+      ),
     );
   }
-  public getLedger(query: AccountHistoryParams) {
+  public getLedger(query: AccountHistoryParams): Promise<LedgerUpdate[]> {
     return getUserNonFundingLedgerUpdates(
       this.client,
       {
@@ -769,16 +920,25 @@ class HyperliquidAccountScope extends HyperliquidNativeScope implements INativeA
         endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
       },
       this.signed(),
+    ).then((res) =>
+      new LedgerConverter().toCommon(res as Parameters<LedgerConverter['toCommon']>[0]),
     );
   }
-  public getRole() {
-    return getUserRole(this.client, { user: this.user() }, this.signed());
+  public getRole(): Promise<AccountRole> {
+    return getUserRole(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new AccountRoleConverter().toCommon(res as Parameters<AccountRoleConverter['toCommon']>[0]),
+    );
   }
-  public getRateLimit() {
-    return getUserRateLimit(this.client, { user: this.user() }, this.signed());
+  public getRateLimit(): Promise<RateLimit> {
+    return getUserRateLimit(this.client, { user: this.user() }, this.signed()).then((res) =>
+      new RateLimitConverter().toCommon(res as Parameters<RateLimitConverter['toCommon']>[0]),
+    );
   }
-  public getHistoricalOrders() {
-    return getHistoricalOrders(this.client, { user: this.user() }, this.signed());
+  public getHistoricalOrders(): Promise<Order[]> {
+    const converter = new HistoricalOrderConverter();
+    return getHistoricalOrders(this.client, { user: this.user() }, this.signed()).then((res) =>
+      ((res as HistoricalOrderNative[] | null) ?? []).map((o) => converter.toCommon(o)),
+    );
   }
 }
 

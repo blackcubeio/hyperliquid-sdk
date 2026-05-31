@@ -63,14 +63,10 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
   }, 30_000);
 
   it('native.subAccounts().getList() + transfers() USDC aller-retour si un sous-compte existe', async () => {
-    // HL renvoie `null` si le master n'a aucun sous-compte, sinon un tableau.
-    const subs = (await dex.native.subAccounts().getList()) as Array<{
-      subAccountUser?: string;
-    }> | null;
+    // getList normalisé → SubAccount[] (type commun) : `address` = adresse du sous-compte, `[]` si aucun.
+    const subs = await dex.native.subAccounts().getList();
     console.log('sous-comptes:', JSON.stringify(subs));
-    const sub = (Array.isArray(subs) ? subs[0]?.subAccountUser : undefined) as
-      | `0x${string}`
-      | undefined;
+    const sub = subs[0]?.address as `0x${string}` | undefined;
     if (sub === undefined) {
       console.log(
         'aucun sous-compte testnet → transfert non exécuté (création testée manuellement)',
@@ -134,24 +130,16 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
   }, 30_000);
 
   it('perp().placeTwap() : place → cancel (réel) + referral.getInfo() + builders.getMaxFee()', async () => {
-    const [meta] = (await dex.native.perp().getMetaAndAssetCtxs()) as [
-      { universe: Array<{ name: string }> },
-      unknown,
-    ];
-    const asset = meta.universe.findIndex((a) => a.name === 'BTC');
-
     // TWAP réel de taille minime sur 5 min, annulé immédiatement (slices toutes les 30 s → ~0 fill).
-    const res = (await dex.native
+    // I/O normalisés : entrée vocab commun (name/side), sortie TwapPlacement (id du TWAP).
+    const twap = await dex.native
       .perp()
-      .placeTwap({ asset, isBuy: true, size: '0.001', minutes: 5 })) as {
-      response?: { data?: { status?: { running?: { twapId?: number } } } };
-    };
-    console.log('twap place:', JSON.stringify(res));
-    const twapId = res.response?.data?.status?.running?.twapId;
-    if (typeof twapId === 'number') {
-      const cancel = await dex.native.perp().cancelTwap({ asset, twapId });
-      expect(cancel).toBeDefined();
-      console.log('twap place→cancel OK, twapId', twapId);
+      .placeTwap({ name: 'BTC', side: 'buy', size: '0.001', minutes: 5 });
+    console.log('twap place:', JSON.stringify(twap));
+    if (twap.id !== null) {
+      const cancel = await dex.native.perp().cancelTwap({ name: 'BTC', id: twap.id });
+      expect(cancel.ok).toBeDefined();
+      console.log('twap place→cancel OK, twapId', twap.id);
     }
 
     // Lectures réelles.
@@ -165,14 +153,6 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
   }, 30_000);
 
   it('perp() surplus ordres : placeBatch → getById → cancelMany', async () => {
-    // Index d'actif BTC (perp) via la meta native.
-    const [meta] = (await dex.native.perp().getMetaAndAssetCtxs()) as [
-      { universe: Array<{ name: string }> },
-      unknown,
-    ];
-    const asset = meta.universe.findIndex((a) => a.name === 'BTC');
-    expect(asset).toBeGreaterThanOrEqual(0);
-
     const prices = await dex.perp().getPrices();
     const mark = Number(prices.find((p) => p.name === 'BTC')?.mid ?? '0');
     const price = String(Math.max(1, Math.round(mark * 0.5)));
@@ -186,15 +166,15 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     expect(order?.name).toBe('BTC');
     expect(order?.side).toBe('buy');
     expect(order?.id).not.toBe('');
-    const oid = Number(order?.id);
 
     // getById normalisé → Order (type commun).
     const found = await dex.native.perp().getById({ name: 'BTC', id: order?.id ?? '' });
     expect(found.name).toBe('BTC');
     expect(found.id).toBe(order?.id);
 
-    // Annulation par lot (cancelMany encore natif — rollout).
-    const cancel = await dex.native.perp().cancelMany([{ asset, oid }]);
-    expect(cancel).toBeDefined();
+    // Annulation par lot normalisée : entrée vocab commun (name/id), sortie CancelResult[].
+    const cancel = await dex.native.perp().cancelMany([{ name: 'BTC', id: order?.id ?? '' }]);
+    expect(cancel[0]?.id).toBe(order?.id);
+    expect(cancel[0]?.status).toBeDefined();
   }, 30_000);
 });
