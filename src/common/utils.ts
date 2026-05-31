@@ -30,3 +30,8 @@ export function assetIndex(universe: readonly { name: string }[], coin: string):
   }
   return index;
 }
+
+/** Convertit un datetime unifié `YYYY-MM-DD HH:MM:SS` (UTC, C7) en millisecondes epoch. */
+export function dateToMs(date: string): number {
+  return new Date(`${date.replace(' ', 'T')}Z`).getTime();
+}
