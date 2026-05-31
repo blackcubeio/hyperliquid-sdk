@@ -14,7 +14,7 @@ import type {
   Trade,
   UserTrade,
 } from '../common/types';
-import { assetIndex } from '../common/utils';
+import { assetIndex, dateToMs } from '../common/utils';
 import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
 import { editOrder } from '../rest/edit-order';
@@ -203,14 +203,16 @@ class HyperliquidMarket
   }
   public getCandles(query: CandlesParams): Promise<Candle[]> {
     const startTime =
-      query.startTime ?? Date.now() - (query.limit ?? 500) * intervalToMs(query.interval);
+      query.startTime === undefined
+        ? Date.now() - (query.limit ?? 500) * intervalToMs(query.interval)
+        : dateToMs(query.startTime);
     return getCandles(
       this.client,
       {
         name: query.name,
         interval: query.interval,
         startTime,
-        endTime: query.endTime,
+        endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
         limit: query.limit,
         kind: this.kind,
       },
@@ -230,7 +232,11 @@ class HyperliquidMarket
   public getFundingHistory(query: FundingParams): Promise<FundingRate[]> {
     return getFundingHistory(
       this.client,
-      { name: query.name, startTime: query.startTime ?? 0, endTime: query.endTime },
+      {
+        name: query.name,
+        startTime: query.startTime === undefined ? 0 : dateToMs(query.startTime),
+        endTime: query.endTime === undefined ? undefined : dateToMs(query.endTime),
+      },
       this.label,
     );
   }
