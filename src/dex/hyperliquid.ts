@@ -116,11 +116,11 @@ import type {
   WithdrawInput,
 } from './contract';
 import type {
-  IAccountExtra,
   IAdvancedOrders,
   IAgents,
   IBuilderFee,
-  IMarketDataExtra,
+  INativeAccount,
+  INativeMarket,
   IReferral,
   IStaking,
   ISubAccountsAdmin,
@@ -532,7 +532,7 @@ class HyperliquidSubAccountsScope extends HyperliquidNativeScope implements ISub
 }
 
 /** Données de marché supplémentaires : **publiques** (label optionnel). */
-class HyperliquidMarketDataScope extends HyperliquidNativeScope implements IMarketDataExtra {
+class HyperliquidMarketDataScope extends HyperliquidNativeScope implements INativeMarket {
   public allMids(dex?: string) {
     return getAllMids(this.client, dex, this.label);
   }
@@ -637,7 +637,7 @@ class HyperliquidStakingScope extends HyperliquidNativeScope implements IStaking
 }
 
 /** Lectures de compte étendues : par adresse du signer (résolue par le scope). */
-class HyperliquidAccountScope extends HyperliquidNativeScope implements IAccountExtra {
+class HyperliquidAccountScope extends HyperliquidNativeScope implements INativeAccount {
   public fees() {
     return getUserFees(this.client, { user: this.user() }, this.signed());
   }

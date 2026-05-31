@@ -16,7 +16,7 @@ signées (un signer est requis).
 
 ---
 
-## `native.marketData()` — `IMarketDataExtra` (lectures publiques)
+## `native.marketData()` — `INativeMarket` (lectures publiques)
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `allMids(dex?)` | `string?` | `Promise<AllMids>` (map `coin → mid`) |
@@ -37,7 +37,7 @@ await dex.native.marketData().predictedFundings();
 await dex.native.marketData().perpDexs();
 ```
 
-## `native.account()` — `IAccountExtra` (lectures de compte étendues)
+## `native.account()` — `INativeAccount` (lectures de compte étendues)
 *(`user` = adresse du signer, injectée par le scope.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
