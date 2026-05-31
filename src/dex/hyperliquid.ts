@@ -744,7 +744,8 @@ export class Hyperliquid {
 
   /**
    * Surplus **spécifique Hyperliquid** (hors contrat commun), accès uniforme
-   * `dex.native.<capacité>(label?)` : `agents`, `transfers`, `marketData`, `advancedOrders`, `account`.
+   * `dex.native.<capacité>(label?)` : `agents`, `transfers`, `marketData`, `advancedOrders`,
+   * `account`, `subAccounts`, `staking`, `vaults`, `twap`, `referral`, `builderFee`.
    */
   public get native() {
     const resolve = (label?: string) => this.resolve(label);
