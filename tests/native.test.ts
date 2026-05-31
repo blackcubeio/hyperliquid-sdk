@@ -6,38 +6,41 @@ const dex = new Hyperliquid();
 
 describe('Hyperliquid — namespace native (mainnet réel, public)', () => {
   it('expose les capacités attendues', () => {
-    for (const c of ['agents', 'marketData', 'account']) {
+    for (const c of ['perp', 'account', 'agents']) {
       expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
     }
-    // `transfers` COMMUN (top-level) ; surplus ordres (placeBatch/twap…) porté par perp()/spot().
+    // Miroir : surplus perp (reads marché + ordres avancés) sous `native.perp()`, PAS sur perp() commun.
+    expect(typeof dex.native.perp().placeBatch).toBe('function');
+    expect(typeof dex.native.perp().placeTwap).toBe('function');
+    expect(typeof dex.native.perp().getAllMids).toBe('function');
+    expect((dex.perp() as unknown as Record<string, unknown>).placeBatch).toBeUndefined();
+    // `transfers` COMMUN (top-level) ; anciens scopes natifs disparus.
     expect(typeof dex.transfers).toBe('function');
-    expect(typeof dex.perp().placeBatch).toBe('function');
-    expect(typeof dex.perp().placeTwap).toBe('function');
     expect((dex.native as Record<string, unknown>).transfers).toBeUndefined();
+    expect((dex.native as Record<string, unknown>).marketData).toBeUndefined();
     expect((dex.native as Record<string, unknown>).advancedOrders).toBeUndefined();
-    expect((dex.native as Record<string, unknown>).twap).toBeUndefined();
   });
 
-  it('native.marketData() — predictedFundings() + perpDexs()', async () => {
+  it('native.perp() — getPredictedFundings() + getPerpDexs()', async () => {
     const [pf, dexs] = await Promise.all([
-      dex.native.marketData().getPredictedFundings(),
-      dex.native.marketData().getPerpDexs(),
+      dex.native.perp().getPredictedFundings(),
+      dex.native.perp().getPerpDexs(),
     ]);
     expect(pf).toBeDefined();
     expect(dexs).toBeDefined();
   });
 
-  it('native.marketData().getAllMids()', async () => {
-    const mids = (await dex.native.marketData().getAllMids()) as Record<string, unknown>;
+  it('native.perp().getAllMids()', async () => {
+    const mids = (await dex.native.perp().getAllMids()) as Record<string, unknown>;
     expect(Object.keys(mids).length).toBeGreaterThan(0);
   });
 
-  it('native.marketData().getMetaAndAssetCtxs() + candleSnapshot()', async () => {
-    const meta = await dex.native.marketData().getMetaAndAssetCtxs();
+  it('native.perp().getMetaAndAssetCtxs() + getCandleSnapshot()', async () => {
+    const meta = await dex.native.perp().getMetaAndAssetCtxs();
     expect(meta).toBeDefined();
 
     const now = Date.now();
-    const candles = (await dex.native.marketData().getCandleSnapshot({
+    const candles = (await dex.native.perp().getCandleSnapshot({
       coin: 'BTC',
       interval: '1h',
       startTime: now - 6 * 3600_000,

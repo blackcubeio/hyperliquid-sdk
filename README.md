@@ -116,12 +116,27 @@ Chaque `subscribeX` renvoie une fonction de désabonnement (`Unsubscribe`). Les 
 
 > Hyperliquid n'a pas de flux de **positions** dédié : pas de `subscribePositions()`.
 
-### Scopes spécifiques Hyperliquid (hors contrat commun)
+### `dex.transfers(label?)` — transferts de fonds (commun)
 
-Hyperliquid offre des opérations qui n'existent pas sur les autres DEX — exposées à part :
+Modèle unifié `transfer({ from?, to, asset?, amount })`, `to`/`from` = `{ wallet:'perp'|'spot' } | { account } | { subAccount }`.
+Routes HL : perp↔spot (`usdClassTransfer`), `to:{subAccount}`, `to:{account}` (`usdSend`/`spotSend` si `asset`).
 
-- `dex.transfers(label?)` : `usdSend(i)`, `usdClassTransfer(i)` (perp ↔ spot), `spotSend(i)`.
-- `dex.agent(label?)` : `approveAgent(i)`, `scheduleCancel(i?)` (dead-man's switch).
+### Surface `native` — spécifique Hyperliquid (`dex.native.<cap>()`)
+
+Le namespace `native` **miroite** le commun ; voir [`doc/native.md`](doc/native.md) pour le détail.
+
+| Scope | Contenu |
+|---|---|
+| `dex.native.perp()` | miroir natif de `perp()` : reads marché (`getAllMids`, `getMetaAndAssetCtxs`, `getCandleSnapshot`, `getPredictedFundings`, `getPerpDexs`, `getFrontendOpenOrders`) **+** ordres avancés (`placeBatch`, `cancelMany`, `cancelManyByClientId`, `editBatch`, `getById`, `getFills`, `placeTwap`, `cancelTwap`, `getTwapFills`) |
+| `dex.native.account()` | miroir natif de `account()` : `getFees`, `getPortfolio`, `getFunding`, `getLedger`, `getRole`, `getRateLimit`, `getHistoricalOrders` |
+| `dex.native.agents()` | `approve` (autorise un agent / API wallet) |
+| `dex.native.subAccounts()` | `create`, `modify`, `getList` (transferts via `transfers()`) |
+| `dex.native.vaults()` | `transfer`, `create`, `modify`, `distribute`, `getDetails`, `getEquities` |
+| `dex.native.staking()` | `deposit`, `withdraw`, `delegate`, `getDelegations`, `getSummary`, `getHistory`, `getRewards` |
+| `dex.native.referral()` | `set`, `getInfo` |
+| `dex.native.builders()` | `approve`, `getMaxFee` (fee builders) |
+
+> Le **dead-man's switch** est commun : `dex.account().armCancelAll(ms)` / `disarm()`.
 
 ## Exemples
 

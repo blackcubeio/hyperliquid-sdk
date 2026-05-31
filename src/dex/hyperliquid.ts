@@ -121,8 +121,7 @@ import type {
   IAgents,
   IBuilders,
   INativeAccount,
-  INativeMarket,
-  INativeOrders,
+  INativePerp,
   IReferral,
   IStaking,
   ISubAccountsAdmin,
@@ -164,7 +163,6 @@ class HyperliquidMarket
     IMarketMeta,
     IProductAccount,
     ITrading,
-    INativeOrders,
     IMarginMode,
     IIsolatedMargin,
     IRemovableMargin
@@ -370,35 +368,6 @@ class HyperliquidMarket
       );
     });
   }
-
-  // ── INativeOrders : surplus ordres HL porté par le scope marché ──
-  public placeBatch(orders: Parameters<typeof placeOrders>[1]) {
-    return placeOrders(this.client, orders, this.signed());
-  }
-  public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
-    return cancelOrders(this.client, params, this.signed());
-  }
-  public cancelManyByClientId(params: Parameters<typeof cancelOrdersByCloid>[1]) {
-    return cancelOrdersByCloid(this.client, params, this.signed());
-  }
-  public editBatch(params: Parameters<typeof batchModifyOrders>[1]) {
-    return batchModifyOrders(this.client, params, this.signed());
-  }
-  public getById(params: Parameters<typeof getOrderStatus>[1]) {
-    return getOrderStatus(this.client, params, this.label);
-  }
-  public getFills(params: Parameters<typeof getUserFillsByTime>[1]) {
-    return getUserFillsByTime(this.client, params, this.label);
-  }
-  public placeTwap(params: Parameters<typeof twapOrder>[1]) {
-    return twapOrder(this.client, params, this.signed());
-  }
-  public cancelTwap(params: Parameters<typeof twapCancel>[1]) {
-    return twapCancel(this.client, params, this.signed());
-  }
-  public getTwapFills() {
-    return getUserTwapSliceFills(this.client, { user: this.user() as Hex }, this.signed());
-  }
 }
 
 /** Scope **compte transverse** (sans produit) : soldes, retrait. HL n'expose pas de liste de
@@ -603,8 +572,12 @@ class HyperliquidSubAccountsScope extends HyperliquidNativeScope implements ISub
   }
 }
 
-/** Données de marché supplémentaires : **publiques** (label optionnel). */
-class HyperliquidMarketDataScope extends HyperliquidNativeScope implements INativeMarket {
+/**
+ * Surplus **perp** HL (miroir natif de `dex.perp()`), accès `dex.native.perp(label?)` :
+ * lectures marché supplémentaires (publiques) + ordres avancés (signés). Hors contrat portable.
+ */
+class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePerp {
+  // ── lectures marché supplémentaires (publiques) ──
   public getAllMids(dex?: string) {
     return getAllMids(this.client, dex, this.label);
   }
@@ -625,6 +598,34 @@ class HyperliquidMarketDataScope extends HyperliquidNativeScope implements INati
   }
   public getPerpDexs() {
     return getPerpDexs(this.client, this.label);
+  }
+  // ── ordres avancés (signés ; formes natives par index d'actif) ──
+  public placeBatch(orders: Parameters<typeof placeOrders>[1]) {
+    return placeOrders(this.client, orders, this.signed());
+  }
+  public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
+    return cancelOrders(this.client, params, this.signed());
+  }
+  public cancelManyByClientId(params: Parameters<typeof cancelOrdersByCloid>[1]) {
+    return cancelOrdersByCloid(this.client, params, this.signed());
+  }
+  public editBatch(params: Parameters<typeof batchModifyOrders>[1]) {
+    return batchModifyOrders(this.client, params, this.signed());
+  }
+  public getById(params: Parameters<typeof getOrderStatus>[1]) {
+    return getOrderStatus(this.client, params, this.label);
+  }
+  public getFills(params: Parameters<typeof getUserFillsByTime>[1]) {
+    return getUserFillsByTime(this.client, params, this.label);
+  }
+  public placeTwap(params: Parameters<typeof twapOrder>[1]) {
+    return twapOrder(this.client, params, this.signed());
+  }
+  public cancelTwap(params: Parameters<typeof twapCancel>[1]) {
+    return twapCancel(this.client, params, this.signed());
+  }
+  public getTwapFills() {
+    return getUserTwapSliceFills(this.client, { user: this.user() as Hex }, this.signed());
   }
 }
 
@@ -797,16 +798,17 @@ export class Hyperliquid {
   }
 
   /**
-   * Surplus **spécifique Hyperliquid** (hors contrat commun), accès uniforme
-   * `dex.native.<capacité>(label?)` : `agents`, `marketData`, `account`, `subAccounts`, `staking`,
-   * `vaults`, `referral`, `builderFee`. (Le surplus **ordres** — batch/twap/… — est porté par
-   * `perp()`/`spot()`.)
+   * Surplus **spécifique Hyperliquid** (hors contrat commun). Le namespace `native` **miroite** le
+   * commun : `dex.native.perp()` (reads marché + ordres avancés, miroir de `perp()`),
+   * `dex.native.account()` (lectures de compte étendues, miroir de `account()`) ; + capacités propres
+   * `agents`, `subAccounts`, `staking`, `vaults`, `referral`, `builders`.
    */
   public get native() {
     const resolve = (label?: string) => this.resolve(label);
     return {
       agents: (label?: string) => new HyperliquidAgentsScope(this.client, resolve(label)),
-      marketData: (label?: string) => new HyperliquidMarketDataScope(this.client, resolve(label)),
+      /** Surplus **perp** (miroir natif de perp()) : reads marché + ordres avancés (batch/twap/…). */
+      perp: (label?: string) => new HyperliquidNativePerp(this.client, resolve(label)),
       /** Lectures de compte étendues (fees, portfolio, funding, ledger, role, rateLimit, historicalOrders). */
       account: (label?: string) => new HyperliquidAccountScope(this.client, resolve(label)),
       /** Sous-comptes : création, transferts (perp/spot), renommage, liste. */

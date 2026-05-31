@@ -1,7 +1,9 @@
 // ── Interfaces COMPLÉMENTAIRES Hyperliquid (hors contrat commun aux DEX) ────────────
-// Capacités **spécifiques** à HL, accessibles via le namespace uniforme `dex.native.<capacité>(label?)`
-// (convention partagée par les 4 SDK). Noms d'interfaces (`INativeMarket`, `IAdvancedOrders`) et de
-// méthodes **identiques** aux autres SDK pour le même geste ; seuls les types de params diffèrent.
+// Capacités **spécifiques** à HL via le namespace `dex.native.<capacité>(label?)`. Le namespace
+// native **miroite** le commun : `native.perp()` (surplus perp = reads marché + ordres avancés) et
+// `native.account()` (lectures de compte étendues) doublent `perp()`/`account()` ; les capacités sans
+// équivalent commun (agents/builders/vaults/staking/subAccounts/referral) restent propres.
+// Lectures get-préfixées, écritures = verbes nus, entrées `…Params`.
 
 import type { approveAgent } from '../rest/exchange/approve-agent';
 import type { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
@@ -101,8 +103,13 @@ export interface ISubAccountsAdmin {
   getList(): ReturnType<typeof getSubAccounts>;
 }
 
-/** Données de marché supplémentaires HL (lectures **publiques**, get-préfixées). */
-export interface INativeMarket {
+/**
+ * Surplus **perp** HL spécifique, accès `dex.native.perp(label?)` (miroir natif de `dex.perp()`) :
+ * lectures marché supplémentaires (get-préfixées, publiques) **+** ordres avancés (batch/cloid/edit/
+ * lecture/fills/TWAP). Hors contrat portable — formes natives assumées (shapes par index d'actif).
+ */
+export interface INativePerp {
+  // ── lectures marché supplémentaires (publiques) ──
   getAllMids(dex?: string): ReturnType<typeof getAllMids>;
   getCandleSnapshot(params: Args<typeof getCandleSnapshot>): ReturnType<typeof getCandleSnapshot>;
   getMetaAndAssetCtxs(): ReturnType<typeof getMetaAndAssetCtxs>;
@@ -112,6 +119,16 @@ export interface INativeMarket {
   ): ReturnType<typeof getFrontendOpenOrders>;
   getPredictedFundings(): ReturnType<typeof getPredictedFundings>;
   getPerpDexs(): ReturnType<typeof getPerpDexs>;
+  // ── ordres avancés (signés ; formes natives par index d'actif) ──
+  placeBatch(orders: PlaceBatchParams): ReturnType<typeof placeOrders>;
+  cancelMany(params: CancelManyParams): ReturnType<typeof cancelOrders>;
+  cancelManyByClientId(params: CancelManyByClientIdParams): ReturnType<typeof cancelOrdersByCloid>;
+  editBatch(params: EditBatchParams): ReturnType<typeof batchModifyOrders>;
+  getById(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
+  getFills(params: Args<typeof getUserFillsByTime>): ReturnType<typeof getUserFillsByTime>;
+  placeTwap(params: TwapOrderParams): ReturnType<typeof twapOrder>;
+  cancelTwap(params: TwapCancelParams): ReturnType<typeof twapCancel>;
+  getTwapFills(): ReturnType<typeof getUserTwapSliceFills>;
 }
 
 /** Vaults HL : dépôt/retrait, création, réglages, distribution, lectures. */
@@ -156,21 +173,4 @@ export interface INativeAccount {
   getRole(): ReturnType<typeof getUserRole>;
   getRateLimit(): ReturnType<typeof getUserRateLimit>;
   getHistoricalOrders(): ReturnType<typeof getHistoricalOrders>;
-}
-
-/**
- * Surplus **ordres** HL, porté par le scope marché (`perp()`/`spot()`) : batch
- * (place/cancel/edit), annulation par client id, lecture d'un ordre, fills par période, TWAP.
- * Verbes alignés inter-SDK (`placeBatch`/`cancelMany`/`editBatch`/`getById`/`getFills`/`placeTwap`…).
- */
-export interface INativeOrders {
-  placeBatch(orders: PlaceBatchParams): ReturnType<typeof placeOrders>;
-  cancelMany(params: CancelManyParams): ReturnType<typeof cancelOrders>;
-  cancelManyByClientId(params: CancelManyByClientIdParams): ReturnType<typeof cancelOrdersByCloid>;
-  editBatch(params: EditBatchParams): ReturnType<typeof batchModifyOrders>;
-  getById(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
-  getFills(params: Args<typeof getUserFillsByTime>): ReturnType<typeof getUserFillsByTime>;
-  placeTwap(params: TwapOrderParams): ReturnType<typeof twapOrder>;
-  cancelTwap(params: TwapCancelParams): ReturnType<typeof twapCancel>;
-  getTwapFills(): ReturnType<typeof getUserTwapSliceFills>;
 }
