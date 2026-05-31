@@ -2,8 +2,9 @@
 
 Capacités **propres à Hyperliquid**, hors contrat unifié (voir [`common.md`](common.md) pour le portable).
 Accès uniforme à tous les SDK : **`dex.native.<capacité>(label?)`**. Les noms d'interfaces (`IAgents`,
-`ITransfers`, `IAdvancedOrders`…) et de méthodes sont **identiques entre SDK** ; seuls les types de
-params diffèrent.
+`IStaking`, `IVaults`…) et de méthodes sont **identiques entre SDK** ; seuls les types de params
+diffèrent. (Le surplus **ordres** — `placeBatch`/`placeTwap`/… — est porté par `perp()`/`spot()`,
+pas par un scope `native` ; voir plus bas.)
 
 ```ts
 const dex = new Hyperliquid({ desk: signer }, { default: 'desk' });
@@ -11,7 +12,7 @@ dex.native.marketData().allMids();
 ```
 
 `label?` choisit le signer (défaut : signer par défaut). Lectures publiques (`marketData`) : `label`
-optionnel, `new Hyperliquid()` suffit. Écritures (`advancedOrders` mutatifs, `agents`, `transfers`) :
+optionnel, `new Hyperliquid()` suffit. Écritures (`agents`, `staking`, `vaults` mutatifs) :
 signées (un signer est requis).
 
 ---
@@ -59,24 +60,36 @@ await dex.native.account().rateLimit();
 await dex.native.account().historicalOrders();
 ```
 
-## `native.advancedOrders()` — `IAdvancedOrders` (batch / cloid / query / fills)
+## Surplus ordres — `INativeOrders`, porté par `perp()` / `spot()`
+
+> Le surplus **ordres** (batch / cloid / lecture / fills / TWAP) n'a **pas** de scope `native`
+> dédié : il est exposé directement sur le scope marché `dex.perp()` / `dex.spot()`, aux côtés des
+> verbes communs (`place`/`cancel`/`edit`…).
+
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `placeBatch(orders)` | `PlaceBatch` | `Promise<unknown>` (statuses) |
 | `cancelMany(cancels)` | `CancelMany` | `Promise<unknown>` |
 | `cancelManyByClientId(cancels)` | `CancelManyByClientId` | `Promise<unknown>` |
-| `modifyBatch(modifies)` | `ModifyBatch` | `Promise<unknown>` |
-| `query(p)` | `{ user: 0x; oid: number \| 0x }` | `Promise<OrderStatusResponse>` |
-| `fillsByTime(p)` | `{ user: 0x; startTime; endTime? }` | `Promise<UserFill[]>` |
+| `editBatch(modifies)` | `ModifyBatch` | `Promise<unknown>` |
+| `getById(p)` | `{ user: 0x; oid: number \| 0x }` | `Promise<OrderStatusResponse>` |
+| `getFills(p)` | `{ user: 0x; startTime; endTime? }` | `Promise<UserFill[]>` |
+| `placeTwap(p)` | `TwapOrder` | `Promise<unknown>` (twapId) |
+| `cancelTwap(p)` | `TwapCancel` | `Promise<unknown>` |
+| `getTwapFills()` | — | `Promise<unknown>` (fills des slices) |
 
 ```ts
-const res = await dex.native.advancedOrders().placeBatch([{ asset: 0, isBuy: true, price: '50000', size: '0.001', tif: 'Alo' }]);
+const res = await dex.perp().placeBatch([{ asset: 0, isBuy: true, price: '50000', size: '0.001', tif: 'Alo' }]);
 const oid = res.response.data.statuses[0].resting.oid;
-await dex.native.advancedOrders().query({ user: '0x…', oid });
-await dex.native.advancedOrders().cancelMany([{ asset: 0, oid }]);
-await dex.native.advancedOrders().cancelManyByClientId([{ asset: 0, cloid: '0x…' }]);
-await dex.native.advancedOrders().modifyBatch([{ oid, order: { asset: 0, isBuy: true, price: '49000', size: '0.001' } }]);
-await dex.native.advancedOrders().fillsByTime({ user: '0x…', startTime: Date.now() - 86_400_000 });
+await dex.perp().getById({ user: '0x…', oid });
+await dex.perp().cancelMany([{ asset: 0, oid }]);
+await dex.perp().cancelManyByClientId([{ asset: 0, cloid: '0x…' }]);
+await dex.perp().editBatch([{ oid, order: { asset: 0, isBuy: true, price: '49000', size: '0.001' } }]);
+await dex.perp().getFills({ user: '0x…', startTime: Date.now() - 86_400_000 });
+// TWAP
+const twap = await dex.perp().placeTwap({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
+await dex.perp().cancelTwap({ asset: 0, twapId: 123 });
+await dex.perp().getTwapFills();
 ```
 
 ## `native.agents()` — `IAgents` (API wallets / agents)
@@ -88,20 +101,8 @@ await dex.native.advancedOrders().fillsByTime({ user: '0x…', startTime: Date.n
 await dex.native.agents().approve({ agentAddress: '0x…', agentName: 'bot' });
 ```
 
-## `native.transfers()` — `ITransfers` (USDC perp / bascule perp↔spot / token spot / inter-DEX)
-| Méthode | Entrée | Sortie |
-|---|---|---|
-| `usdSend(p)` | `UsdSend` | `Promise<unknown>` |
-| `usdClassTransfer(p)` | `UsdClassTransfer` | `Promise<unknown>` |
-| `spotSend(p)` | `SpotSend` | `Promise<unknown>` |
-| `sendAsset(p)` | `SendAsset` `{ destination; sourceDex?; destinationDex?; token; amount; fromSubAccount? }` | `Promise<unknown>` |
-
-```ts
-await dex.native.transfers().usdSend({ destination: '0x…', amount: '10' });
-await dex.native.transfers().usdClassTransfer({ amount: '10', toPerp: false }); // perp → spot
-await dex.native.transfers().spotSend({ destination: '0x…', token: 'USDC:0x…', amount: '10' });
-await dex.native.transfers().sendAsset({ destination: '0x…', sourceDex: '', destinationDex: 'spot', token: 'USDC', amount: '10' });
-```
+> **Transferts** : `transfers()` est désormais un scope **commun** (`dex.transfers()`), plus dans
+> `native`. Voir `doc/common.md` → modèle unifié `transfer({ from?, to, asset?, amount })`.
 
 ## `native.subAccounts()` — `ISubAccountsAdmin` (sous-comptes)
 | Méthode | Entrée | Sortie |
@@ -164,19 +165,6 @@ await dex.native.staking().history();
 await dex.native.staking().rewards();
 ```
 
-## `native.twap()` — `ITwap` (ordres TWAP)
-| Méthode | Entrée | Sortie |
-|---|---|---|
-| `place(p)` | `TwapOrder` `{ asset; isBuy; size; reduceOnly?; minutes(5–1440); randomize? }` | `Promise<unknown>` (twapId) |
-| `cancel(p)` | `TwapCancel` `{ asset; twapId }` | `Promise<unknown>` |
-| `sliceFills()` | — | `Promise<unknown>` (fills des slices) |
-
-```ts
-const res = await dex.native.twap().place({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
-await dex.native.twap().cancel({ asset: 0, twapId: 123 });
-await dex.native.twap().sliceFills();
-```
-
 ## `native.referral()` — `IReferral` (parrainage)
 | Méthode | Entrée | Sortie |
 |---|---|---|
@@ -203,12 +191,12 @@ await dex.native.builderFee().max({ user: '0x…', builder: '0x…' });
 
 > **Validation** (`tests/native.testnet.test.ts` + `tests/native.test.ts`, réseaux réels) :
 > - **public mainnet** : `marketData` (allMids, metaAndAssetCtxs, candleSnapshot, predictedFundings, perpDexs).
-> - **testnet signé/réel** : `advancedOrders` (placeBatch → query → cancelMany), `twap` (place → cancel,
->   twapId réel), `account` (fees/role/rateLimit/portfolio/historicalOrders), `transfers.usdClassTransfer`
->   (signé), `vaults.equities` + `vaults.transfer` (signé), `staking` (lectures + withdraw signé),
->   `subAccounts.list` + transfert USDC aller-retour (si un sous-compte existe), `referral.info`,
->   `builderFee.max`.
+> - **testnet signé/réel** : surplus ordres sur `perp()` (placeBatch → getById → cancelMany, placeTwap
+>   → cancelTwap, twapId réel), `account` (fees/role/rateLimit/portfolio/historicalOrders),
+>   `transfers().transfer` perp↔spot (commun, signé), `vaults.equities` + `vaults.transfer` (signé),
+>   `staking` (lectures + withdraw signé), `subAccounts.list` + transfert USDC aller-retour (si un
+>   sous-compte existe), `referral.info`, `builderFee.max`.
 > - **préparées + documentées, testées manuellement** (créations/one-shot/lockup, sans test automatisé
 >   créant une ressource ou bougeant des fonds inutilement) : `subAccounts.create/spotTransfer/modify`,
 >   `vaults.create/modify/distribute`, `staking.deposit/delegate`, `referral.set`, `builderFee.approve`,
->   `agents.approve`, `transfers.usdSend/spotSend/sendAsset`.
+>   `agents.approve`.

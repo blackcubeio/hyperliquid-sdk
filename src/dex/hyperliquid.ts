@@ -117,15 +117,14 @@ import type {
   WithdrawParams,
 } from './contract';
 import type {
-  IAdvancedOrders,
   IAgents,
   IBuilderFee,
   INativeAccount,
   INativeMarket,
+  INativeOrders,
   IReferral,
   IStaking,
   ISubAccountsAdmin,
-  ITwap,
   IVaults,
 } from './native-contract';
 
@@ -164,6 +163,7 @@ class HyperliquidMarket
     IMarketMeta,
     IProductAccount,
     ITrading,
+    INativeOrders,
     IMarginMode,
     IIsolatedMargin,
     IRemovableMargin
@@ -252,7 +252,7 @@ class HyperliquidMarket
   public getPositions(query?: SymbolParams): Promise<Position[]> {
     return getPositions(this.client, { user: this.user(), name: query?.name }, this.signed());
   }
-  public getOpenOrders(query?: SymbolParams): Promise<Order[]> {
+  public getOpens(query?: SymbolParams): Promise<Order[]> {
     return getOpenOrders(this.client, { user: this.user(), name: query?.name }, this.signed());
   }
   public getUserTrades(query?: SymbolParams): Promise<UserTrade[]> {
@@ -266,16 +266,12 @@ class HyperliquidMarket
   }
 
   // ── ITrading ──
-  public placeOrder(input: PlaceOrderParams): Promise<Order> {
+  public place(input: PlaceOrderParams): Promise<Order> {
     if (input.type !== 'limit' && input.type !== 'market') {
-      throw new Error(
-        `placeOrder (Hyperliquid) : type "${input.type}" non supporté (limit/market).`,
-      );
+      throw new Error(`place (Hyperliquid) : type "${input.type}" non supporté (limit/market).`);
     }
     if (input.price === undefined) {
-      throw new Error(
-        'placeOrder (Hyperliquid) : `price` est requis (limite ou borne de slippage).',
-      );
+      throw new Error('place (Hyperliquid) : `price` est requis (limite ou borne de slippage).');
     }
     return placeOrder(
       this.client,
@@ -293,9 +289,9 @@ class HyperliquidMarket
       this.signed(),
     );
   }
-  public cancelOrder(input: CancelOrderParams): Promise<void> {
+  public cancel(input: CancelOrderParams): Promise<void> {
     if (input.id === undefined) {
-      throw new Error('cancelOrder (Hyperliquid) : `id` (oid) est requis.');
+      throw new Error('cancel (Hyperliquid) : `id` (oid) est requis.');
     }
     return cancelOrder(
       this.client,
@@ -303,19 +299,19 @@ class HyperliquidMarket
       this.signed(),
     );
   }
-  public cancelAllOrders(input: CancelAllParams): Promise<{ cancelled: number | null }> {
+  public cancelAll(input: CancelAllParams): Promise<{ cancelled: number | null }> {
     return cancelAllOrders(
       this.client,
       { user: this.user(), name: input.name, kind: this.kind },
       this.signed(),
     );
   }
-  public editOrder(input: EditOrderParams): Promise<{ name: string; id: string }> {
+  public edit(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.id === undefined) {
-      throw new Error('editOrder (Hyperliquid) : `id` (oid) est requis.');
+      throw new Error('edit (Hyperliquid) : `id` (oid) est requis.');
     }
     if (input.price === undefined) {
-      throw new Error('editOrder (Hyperliquid) : `price` est requis.');
+      throw new Error('edit (Hyperliquid) : `price` est requis.');
     }
     return editOrder(
       this.client,
@@ -372,6 +368,35 @@ class HyperliquidMarket
         () => undefined,
       );
     });
+  }
+
+  // ── INativeOrders : surplus ordres HL porté par le scope marché ──
+  public placeBatch(orders: Parameters<typeof placeOrders>[1]) {
+    return placeOrders(this.client, orders, this.signed());
+  }
+  public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
+    return cancelOrders(this.client, params, this.signed());
+  }
+  public cancelManyByClientId(params: Parameters<typeof cancelOrdersByCloid>[1]) {
+    return cancelOrdersByCloid(this.client, params, this.signed());
+  }
+  public editBatch(params: Parameters<typeof batchModifyOrders>[1]) {
+    return batchModifyOrders(this.client, params, this.signed());
+  }
+  public getById(params: Parameters<typeof getOrderStatus>[1]) {
+    return getOrderStatus(this.client, params, this.label);
+  }
+  public getFills(params: Parameters<typeof getUserFillsByTime>[1]) {
+    return getUserFillsByTime(this.client, params, this.label);
+  }
+  public placeTwap(params: Parameters<typeof twapOrder>[1]) {
+    return twapOrder(this.client, params, this.signed());
+  }
+  public cancelTwap(params: Parameters<typeof twapCancel>[1]) {
+    return twapCancel(this.client, params, this.signed());
+  }
+  public getTwapFills() {
+    return getUserTwapSliceFills(this.client, { user: this.user() as Hex }, this.signed());
   }
 }
 
@@ -631,18 +656,6 @@ class HyperliquidVaultsScope extends HyperliquidNativeScope implements IVaults {
 }
 
 /** TWAP : placement, annulation, fills des slices. */
-class HyperliquidTwapScope extends HyperliquidNativeScope implements ITwap {
-  public place(params: Parameters<typeof twapOrder>[1]) {
-    return twapOrder(this.client, params, this.signed());
-  }
-  public cancel(params: Parameters<typeof twapCancel>[1]) {
-    return twapCancel(this.client, params, this.signed());
-  }
-  public sliceFills() {
-    return getUserTwapSliceFills(this.client, { user: this.user() }, this.signed());
-  }
-}
-
 /** Parrainage : code (une seule fois), lecture de l'état. */
 class HyperliquidReferralScope extends HyperliquidNativeScope implements IReferral {
   public set(params: Parameters<typeof setReferrer>[1]) {
@@ -717,28 +730,6 @@ class HyperliquidAccountScope extends HyperliquidNativeScope implements INativeA
   }
 }
 
-/** Ordres avancés : batch place/cancel/modify, annulation par client id, query, fills par période. */
-class HyperliquidAdvancedOrdersScope extends HyperliquidNativeScope implements IAdvancedOrders {
-  public placeBatch(orders: Parameters<typeof placeOrders>[1]) {
-    return placeOrders(this.client, orders, this.signed());
-  }
-  public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
-    return cancelOrders(this.client, params, this.signed());
-  }
-  public cancelManyByClientId(params: Parameters<typeof cancelOrdersByCloid>[1]) {
-    return cancelOrdersByCloid(this.client, params, this.signed());
-  }
-  public modifyBatch(params: Parameters<typeof batchModifyOrders>[1]) {
-    return batchModifyOrders(this.client, params, this.signed());
-  }
-  public query(params: Parameters<typeof getOrderStatus>[1]) {
-    return getOrderStatus(this.client, params, this.label);
-  }
-  public fillsByTime(params: Parameters<typeof getUserFillsByTime>[1]) {
-    return getUserFillsByTime(this.client, params, this.label);
-  }
-}
-
 /**
  * Façade **Hyperliquid** : `const dex = new Hyperliquid({ deskA: signer }, { default: 'deskA' })`,
  * puis `dex.perp(label?)` / `dex.spot(label?)` (marché), `dex.account(label?)` (compte),
@@ -801,16 +792,15 @@ export class Hyperliquid {
 
   /**
    * Surplus **spécifique Hyperliquid** (hors contrat commun), accès uniforme
-   * `dex.native.<capacité>(label?)` : `agents`, `transfers`, `marketData`, `advancedOrders`,
-   * `account`, `subAccounts`, `staking`, `vaults`, `twap`, `referral`, `builderFee`.
+   * `dex.native.<capacité>(label?)` : `agents`, `marketData`, `account`, `subAccounts`, `staking`,
+   * `vaults`, `referral`, `builderFee`. (Le surplus **ordres** — batch/twap/… — est porté par
+   * `perp()`/`spot()`.)
    */
   public get native() {
     const resolve = (label?: string) => this.resolve(label);
     return {
       agents: (label?: string) => new HyperliquidAgentsScope(this.client, resolve(label)),
       marketData: (label?: string) => new HyperliquidMarketDataScope(this.client, resolve(label)),
-      advancedOrders: (label?: string) =>
-        new HyperliquidAdvancedOrdersScope(this.client, resolve(label)),
       /** Lectures de compte étendues (fees, portfolio, funding, ledger, role, rateLimit, historicalOrders). */
       account: (label?: string) => new HyperliquidAccountScope(this.client, resolve(label)),
       /** Sous-comptes : création, transferts (perp/spot), renommage, liste. */
@@ -819,8 +809,6 @@ export class Hyperliquid {
       staking: (label?: string) => new HyperliquidStakingScope(this.client, resolve(label)),
       /** Vaults : dépôt/retrait, création, réglages, distribution, lectures. */
       vaults: (label?: string) => new HyperliquidVaultsScope(this.client, resolve(label)),
-      /** TWAP : placement, annulation, fills des slices. */
-      twap: (label?: string) => new HyperliquidTwapScope(this.client, resolve(label)),
       /** Parrainage : code, état. */
       referral: (label?: string) => new HyperliquidReferralScope(this.client, resolve(label)),
       /** Builder fee : autorisation, fee max. */
