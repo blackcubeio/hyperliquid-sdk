@@ -14,10 +14,19 @@ import type { usdSend } from '../rest/exchange/usd-send';
 import type { getAllMids } from '../rest/info/get-all-mids';
 import type { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
 import type { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
+import type { getHistoricalOrders } from '../rest/info/get-historical-orders';
 import type { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
 import type { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
 import type { getOrderStatus } from '../rest/info/get-order-status';
+import type { getPerpDexs } from '../rest/info/get-perp-dexs';
+import type { getPortfolio } from '../rest/info/get-portfolio';
+import type { getPredictedFundings } from '../rest/info/get-predicted-fundings';
+import type { getUserFees } from '../rest/info/get-user-fees';
 import type { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
+import type { getUserFunding } from '../rest/info/get-user-funding';
+import type { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
+import type { getUserRateLimit } from '../rest/info/get-user-rate-limit';
+import type { getUserRole } from '../rest/info/get-user-role';
 
 /** `params` (2ᵉ arg) d'une fonction REST `fn(client, params, label)`. */
 type Args<F extends (...a: never[]) => unknown> = Parameters<F>[1];
@@ -60,6 +69,22 @@ export interface IMarketDataExtra {
   frontendOpenOrders(
     params: Args<typeof getFrontendOpenOrders>,
   ): ReturnType<typeof getFrontendOpenOrders>;
+  predictedFundings(): ReturnType<typeof getPredictedFundings>;
+  perpDexs(): ReturnType<typeof getPerpDexs>;
+}
+
+/** Lectures de compte étendues HL (par adresse du signer ; `user` injecté par le scope). */
+export interface IAccountExtra {
+  fees(): ReturnType<typeof getUserFees>;
+  portfolio(): ReturnType<typeof getPortfolio>;
+  funding(query: { startTime: number; endTime?: number }): ReturnType<typeof getUserFunding>;
+  ledger(query: {
+    startTime: number;
+    endTime?: number;
+  }): ReturnType<typeof getUserNonFundingLedgerUpdates>;
+  role(): ReturnType<typeof getUserRole>;
+  rateLimit(): ReturnType<typeof getUserRateLimit>;
+  historicalOrders(): ReturnType<typeof getHistoricalOrders>;
 }
 
 /** Ordres avancés HL : batch (place/cancel/modify), annulation par client id, query, fills par période. */

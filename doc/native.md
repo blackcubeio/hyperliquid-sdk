@@ -24,6 +24,8 @@ signées (un signer est requis).
 | `metaAndAssetCtxs()` | — | `Promise<[Meta, AssetCtx[]]>` (perp) |
 | `metaAndAssetCtxsSpot()` | — | `Promise<[SpotMeta, SpotAssetCtx[]]>` |
 | `frontendOpenOrders(p)` | `{ user: 0x; dex? }` | `Promise<FrontendOrder[]>` |
+| `predictedFundings()` | — | `Promise<unknown>` (funding prédit par venue) |
+| `perpDexs()` | — | `Promise<unknown>` (perp DEX builder-deployed) |
 
 ```ts
 await dex.native.marketData().allMids();
@@ -31,6 +33,30 @@ await dex.native.marketData().candleSnapshot({ coin: 'BTC', interval: '1h', star
 await dex.native.marketData().metaAndAssetCtxs();
 await dex.native.marketData().metaAndAssetCtxsSpot();
 await dex.native.marketData().frontendOpenOrders({ user: '0x…' });
+await dex.native.marketData().predictedFundings();
+await dex.native.marketData().perpDexs();
+```
+
+## `native.account()` — `IAccountExtra` (lectures de compte étendues)
+*(`user` = adresse du signer, injectée par le scope.)*
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `fees()` | — | `Promise<unknown>` (taux maker/taker, remises) |
+| `portfolio()` | — | `Promise<unknown>` (séries valeur/PnL) |
+| `funding(q)` | `{ startTime; endTime? }` | `Promise<unknown>` (paiements funding) |
+| `ledger(q)` | `{ startTime; endTime? }` | `Promise<unknown>` (mouvements hors funding) |
+| `role()` | — | `Promise<unknown>` (user/agent/vault/subAccount) |
+| `rateLimit()` | — | `Promise<unknown>` (volume, requêtes) |
+| `historicalOrders()` | — | `Promise<unknown>` (ordres historiques) |
+
+```ts
+await dex.native.account().fees();
+await dex.native.account().portfolio();
+await dex.native.account().funding({ startTime: Date.now() - 7 * 86_400_000 });
+await dex.native.account().ledger({ startTime: Date.now() - 7 * 86_400_000 });
+await dex.native.account().role();
+await dex.native.account().rateLimit();
+await dex.native.account().historicalOrders();
 ```
 
 ## `native.advancedOrders()` — `IAdvancedOrders` (batch / cloid / query / fills)

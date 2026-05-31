@@ -44,12 +44,21 @@ import { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
 import { getClearinghouseState } from '../rest/info/get-clearinghouse-state';
 import { getClearinghouseStateSpot } from '../rest/info/get-clearinghouse-state-spot';
 import { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
+import { getHistoricalOrders } from '../rest/info/get-historical-orders';
 import { getMeta } from '../rest/info/get-meta';
 import { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
 import { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
 import { getMetaSpot } from '../rest/info/get-meta-spot';
 import { getOrderStatus } from '../rest/info/get-order-status';
+import { getPerpDexs } from '../rest/info/get-perp-dexs';
+import { getPortfolio } from '../rest/info/get-portfolio';
+import { getPredictedFundings } from '../rest/info/get-predicted-fundings';
+import { getUserFees } from '../rest/info/get-user-fees';
 import { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
+import { getUserFunding } from '../rest/info/get-user-funding';
+import { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
+import { getUserRateLimit } from '../rest/info/get-user-rate-limit';
+import { getUserRole } from '../rest/info/get-user-role';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
 import { updateLeverage } from '../rest/update-leverage';
@@ -81,6 +90,7 @@ import type {
   WithdrawInput,
 } from './contract';
 import type {
+  IAccountExtra,
   IAdvancedOrders,
   IAgents,
   IMarketDataExtra,
@@ -436,6 +446,15 @@ class HyperliquidNativeScope {
     }
     return this.label;
   }
+
+  /** Adresse réelle du compte (requise par HL pour les lectures par adresse). */
+  protected user(): `0x${string}` {
+    const signer = this.client.signers[this.signed()];
+    if (signer === undefined) {
+      throw new Error(`Aucun signer enregistré sous "${this.label}".`);
+    }
+    return signer.publicKey as `0x${string}`;
+  }
 }
 
 /** Agents (API wallets). Le dead-man's switch est unifié sous `account().armCancelAll()`. */
@@ -474,6 +493,41 @@ class HyperliquidMarketDataScope extends HyperliquidNativeScope implements IMark
   }
   public frontendOpenOrders(params: Parameters<typeof getFrontendOpenOrders>[1]) {
     return getFrontendOpenOrders(this.client, params, this.label);
+  }
+  public predictedFundings() {
+    return getPredictedFundings(this.client, this.label);
+  }
+  public perpDexs() {
+    return getPerpDexs(this.client, this.label);
+  }
+}
+
+/** Lectures de compte étendues : par adresse du signer (résolue par le scope). */
+class HyperliquidAccountScope extends HyperliquidNativeScope implements IAccountExtra {
+  public fees() {
+    return getUserFees(this.client, { user: this.user() }, this.signed());
+  }
+  public portfolio() {
+    return getPortfolio(this.client, { user: this.user() }, this.signed());
+  }
+  public funding(query: { startTime: number; endTime?: number }) {
+    return getUserFunding(this.client, { user: this.user(), ...query }, this.signed());
+  }
+  public ledger(query: { startTime: number; endTime?: number }) {
+    return getUserNonFundingLedgerUpdates(
+      this.client,
+      { user: this.user(), ...query },
+      this.signed(),
+    );
+  }
+  public role() {
+    return getUserRole(this.client, { user: this.user() }, this.signed());
+  }
+  public rateLimit() {
+    return getUserRateLimit(this.client, { user: this.user() }, this.signed());
+  }
+  public historicalOrders() {
+    return getHistoricalOrders(this.client, { user: this.user() }, this.signed());
   }
 }
 
@@ -556,7 +610,7 @@ export class Hyperliquid {
 
   /**
    * Surplus **spécifique Hyperliquid** (hors contrat commun), accès uniforme
-   * `dex.native.<capacité>(label?)` : `agents`, `transfers`, `marketData`, `advancedOrders`.
+   * `dex.native.<capacité>(label?)` : `agents`, `transfers`, `marketData`, `advancedOrders`, `account`.
    */
   public get native() {
     const resolve = (label?: string) => this.resolve(label);
@@ -566,6 +620,8 @@ export class Hyperliquid {
       marketData: (label?: string) => new HyperliquidMarketDataScope(this.client, resolve(label)),
       advancedOrders: (label?: string) =>
         new HyperliquidAdvancedOrdersScope(this.client, resolve(label)),
+      /** Lectures de compte étendues (fees, portfolio, funding, ledger, role, rateLimit, historicalOrders). */
+      account: (label?: string) => new HyperliquidAccountScope(this.client, resolve(label)),
     };
   }
 
