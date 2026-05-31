@@ -41,19 +41,22 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     expect(Array.isArray(hist)).toBe(true);
   });
 
-  it('native.transfers() : usdClassTransfer (transfert signé réel sur testnet)', async () => {
-    // Vrai appel signé de transfert sur testnet. Le compte testnet est en mode **unifié**
-    // (perp/spot non séparés) → le serveur renvoie « Action disabled when unified account is
-    // active » : c'est un rejet **métier** (la signature a été acceptée et l'action traitée), pas
-    // une erreur de signature. On valide donc : succès OU erreur métier, jamais une erreur de sig.
+  it('transfers().transfer() : perp↔spot signé réel sur testnet (commun unifié)', async () => {
+    // Transfert unifié `transfers().transfer({from,to})` → route vers usdClassTransfer (perp↔spot).
+    // Compte testnet en mode **unifié** → rejet **métier** « Action disabled when unified account is
+    // active » (signature acceptée). On valide : succès OU erreur métier, jamais une erreur de sig.
     try {
-      const res = await dex.native.transfers().usdClassTransfer({ amount: '1', toPerp: false });
+      const res = await dex
+        .transfers()
+        .transfer({ from: { wallet: 'perp' }, to: { wallet: 'spot' }, amount: '1' });
       expect(res).toBeDefined();
-      await dex.native.transfers().usdClassTransfer({ amount: '1', toPerp: true }); // retour
-      console.log('usdClassTransfer aller-retour OK');
+      await dex
+        .transfers()
+        .transfer({ from: { wallet: 'spot' }, to: { wallet: 'perp' }, amount: '1' });
+      console.log('transfer perp↔spot aller-retour OK');
     } catch (e) {
       const msg = String((e as Error).message);
-      console.log('usdClassTransfer rejet métier (signature acceptée):', msg);
+      console.log('transfer rejet métier (signature acceptée):', msg);
       expect(msg).not.toMatch(/signature|does not exist|deserialize|parse/i);
       expect(msg).toMatch(/unified account|insufficient|disabled/i);
     }

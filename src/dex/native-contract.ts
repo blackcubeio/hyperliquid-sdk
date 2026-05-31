@@ -13,17 +13,13 @@ import type { createSubAccount } from '../rest/exchange/create-sub-account';
 import type { createVault } from '../rest/exchange/create-vault';
 import type { batchModifyOrders } from '../rest/exchange/modify-order';
 import type { placeOrders } from '../rest/exchange/place-order';
-import type { sendAsset } from '../rest/exchange/send-asset';
 import type { setReferrer } from '../rest/exchange/set-referrer';
-import type { spotSend } from '../rest/exchange/spot-send';
 import type { subAccountModify } from '../rest/exchange/sub-account-modify';
 import type { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
 import type { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import type { tokenDelegate } from '../rest/exchange/token-delegate';
 import type { twapCancel } from '../rest/exchange/twap-cancel';
 import type { twapOrder } from '../rest/exchange/twap-order';
-import type { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
-import type { usdSend } from '../rest/exchange/usd-send';
 import type { vaultDistribute } from '../rest/exchange/vault-distribute';
 import type { vaultModify } from '../rest/exchange/vault-modify';
 import type { vaultTransfer } from '../rest/exchange/vault-transfer';
@@ -64,11 +60,6 @@ type Args<F extends (...a: never[]) => unknown> = Parameters<F>[1];
 // gardent `Args<typeof fn>` en ligne (un type nommé pour un filtre de lecture n'apporte rien).
 // agents (`ApproveAgent` partagé inter-SDK)
 export type ApproveAgent = Args<typeof approveAgent>;
-// transfers (spécifiques HL)
-export type UsdSend = Args<typeof usdSend>;
-export type UsdClassTransfer = Args<typeof usdClassTransfer>;
-export type SpotSend = Args<typeof spotSend>;
-export type SendAsset = Args<typeof sendAsset>;
 // subAccounts (`CreateSubAccount` partagé inter-SDK)
 export type CreateSubAccount = Args<typeof createSubAccount>;
 export type SubAccountTransfer = Args<typeof subAccountTransfer>;
@@ -97,14 +88,6 @@ export type ModifyBatch = Args<typeof batchModifyOrders>;
 /** Agents (API wallets) — HL n'expose que l'autorisation. */
 export interface IAgents {
   approve(params: ApproveAgent): ReturnType<typeof approveAgent>;
-}
-
-/** Transferts HL : USDC (perp↔perp), bascule perp↔spot, token spot, transfert inter-DEX. */
-export interface ITransfers {
-  usdSend(params: UsdSend): ReturnType<typeof usdSend>;
-  usdClassTransfer(params: UsdClassTransfer): ReturnType<typeof usdClassTransfer>;
-  spotSend(params: SpotSend): ReturnType<typeof spotSend>;
-  sendAsset(params: SendAsset): ReturnType<typeof sendAsset>;
 }
 
 /** Sous-comptes HL : création, transferts (perp/spot) master↔sous-compte, renommage, liste. */

@@ -6,9 +6,12 @@ const dex = new Hyperliquid();
 
 describe('Hyperliquid — namespace native (mainnet réel, public)', () => {
   it('expose les capacités attendues', () => {
-    for (const c of ['agents', 'transfers', 'marketData', 'advancedOrders', 'account']) {
+    for (const c of ['agents', 'marketData', 'advancedOrders', 'account']) {
       expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
     }
+    // `transfers` est COMMUN (top-level), plus dans native.
+    expect(typeof dex.transfers).toBe('function');
+    expect((dex.native as Record<string, unknown>).transfers).toBeUndefined();
   });
 
   it('native.marketData() — predictedFundings() + perpDexs()', async () => {
