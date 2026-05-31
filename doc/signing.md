@@ -42,7 +42,7 @@ const dex = new Hyperliquid(
   { default: 'trader' },
 );
 
-await dex.perp('tester').placeOrder(params);  // le label choisit le compte ET le réseau
+await dex.perp('tester').place(params);  // le label choisit le compte ET le réseau
 await dex.perp().getCandles(query);            // lecture publique, signer par défaut
 ```
 
