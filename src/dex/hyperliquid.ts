@@ -19,6 +19,7 @@ import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
 import { editOrder } from '../rest/edit-order';
 import { approveAgent } from '../rest/exchange/approve-agent';
+import { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
 import { cDeposit } from '../rest/exchange/c-deposit';
 import { cWithdraw } from '../rest/exchange/c-withdraw';
 import { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
@@ -30,11 +31,14 @@ import { batchModifyOrders } from '../rest/exchange/modify-order';
 import { placeOrders } from '../rest/exchange/place-order';
 import { scheduleCancel } from '../rest/exchange/schedule-cancel';
 import { sendAsset } from '../rest/exchange/send-asset';
+import { setReferrer } from '../rest/exchange/set-referrer';
 import { spotSend } from '../rest/exchange/spot-send';
 import { subAccountModify } from '../rest/exchange/sub-account-modify';
 import { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
 import { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import { tokenDelegate } from '../rest/exchange/token-delegate';
+import { twapCancel } from '../rest/exchange/twap-cancel';
+import { twapOrder } from '../rest/exchange/twap-order';
 import { updateIsolatedMargin } from '../rest/exchange/update-isolated-margin';
 import { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import { usdSend } from '../rest/exchange/usd-send';
@@ -61,6 +65,7 @@ import { getDelegatorRewards } from '../rest/info/get-delegator-rewards';
 import { getDelegatorSummary } from '../rest/info/get-delegator-summary';
 import { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
 import { getHistoricalOrders } from '../rest/info/get-historical-orders';
+import { getMaxBuilderFee } from '../rest/info/get-max-builder-fee';
 import { getMeta } from '../rest/info/get-meta';
 import { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
 import { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
@@ -69,6 +74,7 @@ import { getOrderStatus } from '../rest/info/get-order-status';
 import { getPerpDexs } from '../rest/info/get-perp-dexs';
 import { getPortfolio } from '../rest/info/get-portfolio';
 import { getPredictedFundings } from '../rest/info/get-predicted-fundings';
+import { getReferral } from '../rest/info/get-referral';
 import { getSubAccounts } from '../rest/info/get-sub-accounts';
 import { getUserFees } from '../rest/info/get-user-fees';
 import { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
@@ -76,6 +82,7 @@ import { getUserFunding } from '../rest/info/get-user-funding';
 import { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
 import { getUserRateLimit } from '../rest/info/get-user-rate-limit';
 import { getUserRole } from '../rest/info/get-user-role';
+import { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import { getVaultDetails } from '../rest/info/get-vault-details';
 import { placeOrder } from '../rest/place-order';
@@ -112,10 +119,13 @@ import type {
   IAccountExtra,
   IAdvancedOrders,
   IAgents,
+  IBuilderFee,
   IMarketDataExtra,
+  IReferral,
   IStaking,
   ISubAccountsAdmin,
   ITransfers,
+  ITwap,
   IVaults,
 } from './native-contract';
 
@@ -568,6 +578,39 @@ class HyperliquidVaultsScope extends HyperliquidNativeScope implements IVaults {
   }
 }
 
+/** TWAP : placement, annulation, fills des slices. */
+class HyperliquidTwapScope extends HyperliquidNativeScope implements ITwap {
+  public place(params: Parameters<typeof twapOrder>[1]) {
+    return twapOrder(this.client, params, this.signed());
+  }
+  public cancel(params: Parameters<typeof twapCancel>[1]) {
+    return twapCancel(this.client, params, this.signed());
+  }
+  public sliceFills() {
+    return getUserTwapSliceFills(this.client, { user: this.user() }, this.signed());
+  }
+}
+
+/** Parrainage : code (une seule fois), lecture de l'état. */
+class HyperliquidReferralScope extends HyperliquidNativeScope implements IReferral {
+  public set(params: Parameters<typeof setReferrer>[1]) {
+    return setReferrer(this.client, params, this.signed());
+  }
+  public info() {
+    return getReferral(this.client, { user: this.user() }, this.signed());
+  }
+}
+
+/** Builder fee : autorisation, lecture du fee max approuvé. */
+class HyperliquidBuilderFeeScope extends HyperliquidNativeScope implements IBuilderFee {
+  public approve(params: Parameters<typeof approveBuilderFee>[1]) {
+    return approveBuilderFee(this.client, params, this.signed());
+  }
+  public max(params: Parameters<typeof getMaxBuilderFee>[1]) {
+    return getMaxBuilderFee(this.client, params, this.label);
+  }
+}
+
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation, lectures. */
 class HyperliquidStakingScope extends HyperliquidNativeScope implements IStaking {
   public deposit(params: Parameters<typeof cDeposit>[1]) {
@@ -719,6 +762,12 @@ export class Hyperliquid {
       staking: (label?: string) => new HyperliquidStakingScope(this.client, resolve(label)),
       /** Vaults : dépôt/retrait, création, réglages, distribution, lectures. */
       vaults: (label?: string) => new HyperliquidVaultsScope(this.client, resolve(label)),
+      /** TWAP : placement, annulation, fills des slices. */
+      twap: (label?: string) => new HyperliquidTwapScope(this.client, resolve(label)),
+      /** Parrainage : code, état. */
+      referral: (label?: string) => new HyperliquidReferralScope(this.client, resolve(label)),
+      /** Builder fee : autorisation, fee max. */
+      builderFee: (label?: string) => new HyperliquidBuilderFeeScope(this.client, resolve(label)),
     };
   }
 

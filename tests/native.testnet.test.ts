@@ -132,6 +132,37 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     }
   }, 30_000);
 
+  it('native.twap() : place → cancel (réel) + referral.info() + builderFee.max()', async () => {
+    const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
+      { universe: Array<{ name: string }> },
+      unknown,
+    ];
+    const asset = meta.universe.findIndex((a) => a.name === 'BTC');
+
+    // TWAP réel de taille minime sur 5 min, annulé immédiatement (slices toutes les 30 s → ~0 fill).
+    const res = (await dex.native
+      .twap()
+      .place({ asset, isBuy: true, size: '0.001', minutes: 5 })) as {
+      response?: { data?: { status?: { running?: { twapId?: number } } } };
+    };
+    console.log('twap place:', JSON.stringify(res));
+    const twapId = res.response?.data?.status?.running?.twapId;
+    if (typeof twapId === 'number') {
+      const cancel = await dex.native.twap().cancel({ asset, twapId });
+      expect(cancel).toBeDefined();
+      console.log('twap place→cancel OK, twapId', twapId);
+    }
+
+    // Lectures réelles.
+    expect(await dex.native.referral().info()).toBeDefined();
+    expect(
+      await dex.native
+        .builderFee()
+        .max({ user: account as `0x${string}`, builder: account as `0x${string}` }),
+    ).toBeDefined();
+    // `referral.set` (one-shot) et `builderFee.approve` (persistant) sont testés manuellement.
+  }, 30_000);
+
   it('native.advancedOrders() : placeBatch → query → cancelMany', async () => {
     // Index d'actif BTC (perp) via la meta native.
     const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [

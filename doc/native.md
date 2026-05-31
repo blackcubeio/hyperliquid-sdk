@@ -164,6 +164,41 @@ await dex.native.staking().history();
 await dex.native.staking().rewards();
 ```
 
+## `native.twap()` — `ITwap` (ordres TWAP)
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `place(p)` | `TwapOrder` `{ asset; isBuy; size; reduceOnly?; minutes(5–1440); randomize? }` | `Promise<unknown>` (twapId) |
+| `cancel(p)` | `TwapCancel` `{ asset; twapId }` | `Promise<unknown>` |
+| `sliceFills()` | — | `Promise<unknown>` (fills des slices) |
+
+```ts
+const res = await dex.native.twap().place({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
+await dex.native.twap().cancel({ asset: 0, twapId: 123 });
+await dex.native.twap().sliceFills();
+```
+
+## `native.referral()` — `IReferral` (parrainage)
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `set(p)` | `SetReferrer` `{ code }` (une seule fois) | `Promise<unknown>` |
+| `info()` | — | `Promise<unknown>` (code, parrain, filleuls) |
+
+```ts
+await dex.native.referral().set({ code: 'MYCODE' });
+await dex.native.referral().info();
+```
+
+## `native.builderFee()` — `IBuilderFee` (fee builder)
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `approve(p)` | `ApproveBuilderFee` `{ maxFeeRate: "0.001%"; builder: 0x }` | `Promise<unknown>` |
+| `max(p)` | `{ user: 0x; builder: 0x }` | `Promise<unknown>` (fee max approuvé) |
+
+```ts
+await dex.native.builderFee().approve({ maxFeeRate: '0.001%', builder: '0x…' });
+await dex.native.builderFee().max({ user: '0x…', builder: '0x…' });
+```
+
 ---
 
 > Validation (`tests/native.testnet.test.ts`, testnet réel) : `advancedOrders` (placeBatch → query →

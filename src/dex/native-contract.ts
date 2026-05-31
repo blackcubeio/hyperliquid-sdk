@@ -4,6 +4,7 @@
 // méthodes **identiques** aux autres SDK pour le même geste ; seuls les types de params diffèrent.
 
 import type { approveAgent } from '../rest/exchange/approve-agent';
+import type { approveBuilderFee } from '../rest/exchange/approve-builder-fee';
 import type { cDeposit } from '../rest/exchange/c-deposit';
 import type { cWithdraw } from '../rest/exchange/c-withdraw';
 import type { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
@@ -13,11 +14,14 @@ import type { createVault } from '../rest/exchange/create-vault';
 import type { batchModifyOrders } from '../rest/exchange/modify-order';
 import type { placeOrders } from '../rest/exchange/place-order';
 import type { sendAsset } from '../rest/exchange/send-asset';
+import type { setReferrer } from '../rest/exchange/set-referrer';
 import type { spotSend } from '../rest/exchange/spot-send';
 import type { subAccountModify } from '../rest/exchange/sub-account-modify';
 import type { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
 import type { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import type { tokenDelegate } from '../rest/exchange/token-delegate';
+import type { twapCancel } from '../rest/exchange/twap-cancel';
+import type { twapOrder } from '../rest/exchange/twap-order';
 import type { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import type { usdSend } from '../rest/exchange/usd-send';
 import type { vaultDistribute } from '../rest/exchange/vault-distribute';
@@ -31,12 +35,14 @@ import type { getDelegatorRewards } from '../rest/info/get-delegator-rewards';
 import type { getDelegatorSummary } from '../rest/info/get-delegator-summary';
 import type { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
 import type { getHistoricalOrders } from '../rest/info/get-historical-orders';
+import type { getMaxBuilderFee } from '../rest/info/get-max-builder-fee';
 import type { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
 import type { getMetaAndAssetCtxsSpot } from '../rest/info/get-meta-and-asset-ctxs-spot';
 import type { getOrderStatus } from '../rest/info/get-order-status';
 import type { getPerpDexs } from '../rest/info/get-perp-dexs';
 import type { getPortfolio } from '../rest/info/get-portfolio';
 import type { getPredictedFundings } from '../rest/info/get-predicted-fundings';
+import type { getReferral } from '../rest/info/get-referral';
 import type { getSubAccounts } from '../rest/info/get-sub-accounts';
 import type { getUserFees } from '../rest/info/get-user-fees';
 import type { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
@@ -44,6 +50,7 @@ import type { getUserFunding } from '../rest/info/get-user-funding';
 import type { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
 import type { getUserRateLimit } from '../rest/info/get-user-rate-limit';
 import type { getUserRole } from '../rest/info/get-user-role';
+import type { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import type { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import type { getVaultDetails } from '../rest/info/get-vault-details';
 
@@ -76,6 +83,11 @@ export type VaultTransfer = Args<typeof vaultTransfer>;
 export type CreateVault = Args<typeof createVault>;
 export type VaultModify = Args<typeof vaultModify>;
 export type VaultDistribute = Args<typeof vaultDistribute>;
+// twap / referral / builderFee
+export type TwapOrder = Args<typeof twapOrder>;
+export type TwapCancel = Args<typeof twapCancel>;
+export type SetReferrer = Args<typeof setReferrer>;
+export type ApproveBuilderFee = Args<typeof approveBuilderFee>;
 // advancedOrders (`PlaceBatch`/`CancelMany` partagés Aster)
 export type PlaceBatch = Args<typeof placeOrders>;
 export type CancelMany = Args<typeof cancelOrders>;
@@ -125,6 +137,25 @@ export interface IVaults {
   distribute(params: VaultDistribute): ReturnType<typeof vaultDistribute>;
   details(params: Args<typeof getVaultDetails>): ReturnType<typeof getVaultDetails>;
   equities(): ReturnType<typeof getUserVaultEquities>;
+}
+
+/** TWAP : placement, annulation, fills des slices. */
+export interface ITwap {
+  place(params: TwapOrder): ReturnType<typeof twapOrder>;
+  cancel(params: TwapCancel): ReturnType<typeof twapCancel>;
+  sliceFills(): ReturnType<typeof getUserTwapSliceFills>;
+}
+
+/** Parrainage : définir son code (une seule fois), lire l'état de parrainage. */
+export interface IReferral {
+  set(params: SetReferrer): ReturnType<typeof setReferrer>;
+  info(): ReturnType<typeof getReferral>;
+}
+
+/** Builder fee : autoriser un fee builder, lire le fee max approuvé. */
+export interface IBuilderFee {
+  approve(params: ApproveBuilderFee): ReturnType<typeof approveBuilderFee>;
+  max(params: Args<typeof getMaxBuilderFee>): ReturnType<typeof getMaxBuilderFee>;
 }
 
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation à un validateur, lectures. */
