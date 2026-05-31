@@ -19,6 +19,8 @@ import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
 import { editOrder } from '../rest/edit-order';
 import { approveAgent } from '../rest/exchange/approve-agent';
+import { cDeposit } from '../rest/exchange/c-deposit';
+import { cWithdraw } from '../rest/exchange/c-withdraw';
 import { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
 import { cancelOrders } from '../rest/exchange/cancel-order';
 import { createSubAccount } from '../rest/exchange/create-sub-account';
@@ -31,6 +33,7 @@ import { spotSend } from '../rest/exchange/spot-send';
 import { subAccountModify } from '../rest/exchange/sub-account-modify';
 import { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
 import { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
+import { tokenDelegate } from '../rest/exchange/token-delegate';
 import { updateIsolatedMargin } from '../rest/exchange/update-isolated-margin';
 import { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import { usdSend } from '../rest/exchange/usd-send';
@@ -48,6 +51,10 @@ import { getAllMids } from '../rest/info/get-all-mids';
 import { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
 import { getClearinghouseState } from '../rest/info/get-clearinghouse-state';
 import { getClearinghouseStateSpot } from '../rest/info/get-clearinghouse-state-spot';
+import { getDelegations } from '../rest/info/get-delegations';
+import { getDelegatorHistory } from '../rest/info/get-delegator-history';
+import { getDelegatorRewards } from '../rest/info/get-delegator-rewards';
+import { getDelegatorSummary } from '../rest/info/get-delegator-summary';
 import { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
 import { getHistoricalOrders } from '../rest/info/get-historical-orders';
 import { getMeta } from '../rest/info/get-meta';
@@ -100,6 +107,7 @@ import type {
   IAdvancedOrders,
   IAgents,
   IMarketDataExtra,
+  IStaking,
   ISubAccountsAdmin,
   ITransfers,
 } from './native-contract';
@@ -531,6 +539,31 @@ class HyperliquidMarketDataScope extends HyperliquidNativeScope implements IMark
   }
 }
 
+/** Staking HYPE : dépôt/retrait du solde de staking, délégation, lectures. */
+class HyperliquidStakingScope extends HyperliquidNativeScope implements IStaking {
+  public deposit(params: Parameters<typeof cDeposit>[1]) {
+    return cDeposit(this.client, params, this.signed());
+  }
+  public withdraw(params: Parameters<typeof cWithdraw>[1]) {
+    return cWithdraw(this.client, params, this.signed());
+  }
+  public delegate(params: Parameters<typeof tokenDelegate>[1]) {
+    return tokenDelegate(this.client, params, this.signed());
+  }
+  public delegations() {
+    return getDelegations(this.client, { user: this.user() }, this.signed());
+  }
+  public summary() {
+    return getDelegatorSummary(this.client, { user: this.user() }, this.signed());
+  }
+  public history() {
+    return getDelegatorHistory(this.client, { user: this.user() }, this.signed());
+  }
+  public rewards() {
+    return getDelegatorRewards(this.client, { user: this.user() }, this.signed());
+  }
+}
+
 /** Lectures de compte étendues : par adresse du signer (résolue par le scope). */
 class HyperliquidAccountScope extends HyperliquidNativeScope implements IAccountExtra {
   public fees() {
@@ -653,6 +686,8 @@ export class Hyperliquid {
       account: (label?: string) => new HyperliquidAccountScope(this.client, resolve(label)),
       /** Sous-comptes : création, transferts (perp/spot), renommage, liste. */
       subAccounts: (label?: string) => new HyperliquidSubAccountsScope(this.client, resolve(label)),
+      /** Staking HYPE : dépôt/retrait, délégation, lectures. */
+      staking: (label?: string) => new HyperliquidStakingScope(this.client, resolve(label)),
     };
   }
 

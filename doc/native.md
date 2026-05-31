@@ -121,6 +121,29 @@ await dex.native.subAccounts().modify({ subAccountUser: '0x…', name: 'bot-2' }
 await dex.native.subAccounts().list();
 ```
 
+## `native.staking()` — `IStaking` (staking HYPE)
+*(le retrait de staking a un **délai de déblocage** ; `deposit`/`withdraw`/`delegate` sont des écritures à lockup.)*
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `deposit(p)` | `StakingDeposit` `{ amount }` | `Promise<unknown>` (HYPE → solde de staking) |
+| `withdraw(p)` | `StakingWithdraw` `{ amount }` | `Promise<unknown>` (solde de staking → spot) |
+| `delegate(p)` | `Delegate` `{ validator: 0x; amount; isUndelegate }` | `Promise<unknown>` |
+| `delegations()` | — | `Promise<unknown>` (délégations en cours) |
+| `summary()` | — | `Promise<unknown>` (staké / non-staké / en retrait) |
+| `history()` | — | `Promise<unknown>` |
+| `rewards()` | — | `Promise<unknown>` |
+
+```ts
+await dex.native.staking().deposit({ amount: '10' });   // 10 HYPE → staking
+await dex.native.staking().delegate({ validator: '0x…', amount: '10', isUndelegate: false });
+await dex.native.staking().delegate({ validator: '0x…', amount: '10', isUndelegate: true });
+await dex.native.staking().withdraw({ amount: '10' });   // staking → spot (après déblocage)
+await dex.native.staking().delegations();
+await dex.native.staking().summary();
+await dex.native.staking().history();
+await dex.native.staking().rewards();
+```
+
 ---
 
 > Validation (`tests/native.testnet.test.ts`, testnet réel) : `advancedOrders` (placeBatch → query →
