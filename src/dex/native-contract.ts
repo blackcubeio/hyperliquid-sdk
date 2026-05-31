@@ -6,9 +6,14 @@
 import type { approveAgent } from '../rest/exchange/approve-agent';
 import type { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
 import type { cancelOrders } from '../rest/exchange/cancel-order';
+import type { createSubAccount } from '../rest/exchange/create-sub-account';
 import type { batchModifyOrders } from '../rest/exchange/modify-order';
 import type { placeOrders } from '../rest/exchange/place-order';
+import type { sendAsset } from '../rest/exchange/send-asset';
 import type { spotSend } from '../rest/exchange/spot-send';
+import type { subAccountModify } from '../rest/exchange/sub-account-modify';
+import type { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
+import type { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import type { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import type { usdSend } from '../rest/exchange/usd-send';
 import type { getAllMids } from '../rest/info/get-all-mids';
@@ -21,6 +26,7 @@ import type { getOrderStatus } from '../rest/info/get-order-status';
 import type { getPerpDexs } from '../rest/info/get-perp-dexs';
 import type { getPortfolio } from '../rest/info/get-portfolio';
 import type { getPredictedFundings } from '../rest/info/get-predicted-fundings';
+import type { getSubAccounts } from '../rest/info/get-sub-accounts';
 import type { getUserFees } from '../rest/info/get-user-fees';
 import type { getUserFillsByTime } from '../rest/info/get-user-fills-by-time';
 import type { getUserFunding } from '../rest/info/get-user-funding';
@@ -42,6 +48,12 @@ export type ApproveAgent = Args<typeof approveAgent>;
 export type UsdSend = Args<typeof usdSend>;
 export type UsdClassTransfer = Args<typeof usdClassTransfer>;
 export type SpotSend = Args<typeof spotSend>;
+export type SendAsset = Args<typeof sendAsset>;
+// subAccounts (`CreateSubAccount` partagé inter-SDK)
+export type CreateSubAccount = Args<typeof createSubAccount>;
+export type SubAccountTransfer = Args<typeof subAccountTransfer>;
+export type SubAccountSpotTransfer = Args<typeof subAccountSpotTransfer>;
+export type SubAccountModify = Args<typeof subAccountModify>;
 // advancedOrders (`PlaceBatch`/`CancelMany` partagés Aster)
 export type PlaceBatch = Args<typeof placeOrders>;
 export type CancelMany = Args<typeof cancelOrders>;
@@ -53,11 +65,21 @@ export interface IAgents {
   approve(params: ApproveAgent): ReturnType<typeof approveAgent>;
 }
 
-/** Transferts HL : USDC (perp↔perp), bascule perp↔spot, token spot. */
+/** Transferts HL : USDC (perp↔perp), bascule perp↔spot, token spot, transfert inter-DEX. */
 export interface ITransfers {
   usdSend(params: UsdSend): ReturnType<typeof usdSend>;
   usdClassTransfer(params: UsdClassTransfer): ReturnType<typeof usdClassTransfer>;
   spotSend(params: SpotSend): ReturnType<typeof spotSend>;
+  sendAsset(params: SendAsset): ReturnType<typeof sendAsset>;
+}
+
+/** Sous-comptes HL : création, transferts (perp/spot) master↔sous-compte, renommage, liste. */
+export interface ISubAccountsAdmin {
+  create(params: CreateSubAccount): ReturnType<typeof createSubAccount>;
+  transfer(params: SubAccountTransfer): ReturnType<typeof subAccountTransfer>;
+  spotTransfer(params: SubAccountSpotTransfer): ReturnType<typeof subAccountSpotTransfer>;
+  modify(params: SubAccountModify): ReturnType<typeof subAccountModify>;
+  list(): ReturnType<typeof getSubAccounts>;
 }
 
 /** Données de marché supplémentaires HL (lectures **publiques**). */
