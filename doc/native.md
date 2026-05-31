@@ -201,8 +201,14 @@ await dex.native.builderFee().max({ user: '0x…', builder: '0x…' });
 
 ---
 
-> Validation (`tests/native.testnet.test.ts`, testnet réel) : `advancedOrders` (placeBatch → query →
-> cancelMany), `account` (lectures par adresse), `subAccounts.list()` + **transfert USDC aller-retour**
-> master↔sous-compte si un sous-compte existe. Les **créations** (`subAccounts.create`, agents) et
-> `sendAsset` sont **préparées + documentées** mais testées **manuellement** (pas de création de
-> ressource/clé en test automatisé).
+> **Validation** (`tests/native.testnet.test.ts` + `tests/native.test.ts`, réseaux réels) :
+> - **public mainnet** : `marketData` (allMids, metaAndAssetCtxs, candleSnapshot, predictedFundings, perpDexs).
+> - **testnet signé/réel** : `advancedOrders` (placeBatch → query → cancelMany), `twap` (place → cancel,
+>   twapId réel), `account` (fees/role/rateLimit/portfolio/historicalOrders), `transfers.usdClassTransfer`
+>   (signé), `vaults.equities` + `vaults.transfer` (signé), `staking` (lectures + withdraw signé),
+>   `subAccounts.list` + transfert USDC aller-retour (si un sous-compte existe), `referral.info`,
+>   `builderFee.max`.
+> - **préparées + documentées, testées manuellement** (créations/one-shot/lockup, sans test automatisé
+>   créant une ressource ou bougeant des fonds inutilement) : `subAccounts.create/spotTransfer/modify`,
+>   `vaults.create/modify/distribute`, `staking.deposit/delegate`, `referral.set`, `builderFee.approve`,
+>   `agents.approve`, `transfers.usdSend/spotSend/sendAsset`.
