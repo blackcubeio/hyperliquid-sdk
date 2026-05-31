@@ -4,6 +4,8 @@
 // méthodes **identiques** aux autres SDK pour le même geste ; seuls les types de params diffèrent.
 
 import type { approveAgent } from '../rest/exchange/approve-agent';
+import type { cDeposit } from '../rest/exchange/c-deposit';
+import type { cWithdraw } from '../rest/exchange/c-withdraw';
 import type { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
 import type { cancelOrders } from '../rest/exchange/cancel-order';
 import type { createSubAccount } from '../rest/exchange/create-sub-account';
@@ -14,10 +16,15 @@ import type { spotSend } from '../rest/exchange/spot-send';
 import type { subAccountModify } from '../rest/exchange/sub-account-modify';
 import type { subAccountSpotTransfer } from '../rest/exchange/sub-account-spot-transfer';
 import type { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
+import type { tokenDelegate } from '../rest/exchange/token-delegate';
 import type { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import type { usdSend } from '../rest/exchange/usd-send';
 import type { getAllMids } from '../rest/info/get-all-mids';
 import type { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
+import type { getDelegations } from '../rest/info/get-delegations';
+import type { getDelegatorHistory } from '../rest/info/get-delegator-history';
+import type { getDelegatorRewards } from '../rest/info/get-delegator-rewards';
+import type { getDelegatorSummary } from '../rest/info/get-delegator-summary';
 import type { getFrontendOpenOrders } from '../rest/info/get-frontend-open-orders';
 import type { getHistoricalOrders } from '../rest/info/get-historical-orders';
 import type { getMetaAndAssetCtxs } from '../rest/info/get-meta-and-asset-ctxs';
@@ -54,6 +61,10 @@ export type CreateSubAccount = Args<typeof createSubAccount>;
 export type SubAccountTransfer = Args<typeof subAccountTransfer>;
 export type SubAccountSpotTransfer = Args<typeof subAccountSpotTransfer>;
 export type SubAccountModify = Args<typeof subAccountModify>;
+// staking
+export type StakingDeposit = Args<typeof cDeposit>;
+export type StakingWithdraw = Args<typeof cWithdraw>;
+export type Delegate = Args<typeof tokenDelegate>;
 // advancedOrders (`PlaceBatch`/`CancelMany` partagés Aster)
 export type PlaceBatch = Args<typeof placeOrders>;
 export type CancelMany = Args<typeof cancelOrders>;
@@ -93,6 +104,17 @@ export interface IMarketDataExtra {
   ): ReturnType<typeof getFrontendOpenOrders>;
   predictedFundings(): ReturnType<typeof getPredictedFundings>;
   perpDexs(): ReturnType<typeof getPerpDexs>;
+}
+
+/** Staking HYPE : dépôt/retrait du solde de staking, délégation à un validateur, lectures. */
+export interface IStaking {
+  deposit(params: StakingDeposit): ReturnType<typeof cDeposit>;
+  withdraw(params: StakingWithdraw): ReturnType<typeof cWithdraw>;
+  delegate(params: Delegate): ReturnType<typeof tokenDelegate>;
+  delegations(): ReturnType<typeof getDelegations>;
+  summary(): ReturnType<typeof getDelegatorSummary>;
+  history(): ReturnType<typeof getDelegatorHistory>;
+  rewards(): ReturnType<typeof getDelegatorRewards>;
 }
 
 /** Lectures de compte étendues HL (par adresse du signer ; `user` injecté par le scope). */

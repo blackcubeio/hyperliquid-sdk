@@ -86,6 +86,33 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     console.log('transfert sous-compte aller-retour OK sur', sub);
   }, 30_000);
 
+  it('native.staking() : lectures réelles + chemin signé withdraw (sans lockup)', async () => {
+    const st = dex.native.staking();
+    const [del, sum, hist, rew] = await Promise.all([
+      st.delegations(),
+      st.summary(),
+      st.history(),
+      st.rewards(),
+    ]);
+    expect(del).toBeDefined();
+    expect(sum).toBeDefined();
+    expect(hist).toBeDefined();
+    expect(rew).toBeDefined();
+
+    // Écriture signée non bloquante : withdraw d'un montant minuscule. Si rien n'est staké, le
+    // serveur renvoie un rejet **métier** (signature acceptée) → valide le chemin sans lockup.
+    // `deposit`/`delegate` (lockup 7 j) sont préparés + documentés et testés manuellement.
+    try {
+      const res = await st.withdraw({ amount: '0.00000001' });
+      expect(res).toBeDefined();
+      console.log('staking withdraw accepté');
+    } catch (e) {
+      const msg = String((e as Error).message);
+      console.log('staking withdraw rejet métier (signature acceptée):', msg);
+      expect(msg).not.toMatch(/signature|does not exist|deserialize|parse/i);
+    }
+  }, 30_000);
+
   it('native.advancedOrders() : placeBatch → query → cancelMany', async () => {
     // Index d'actif BTC (perp) via la meta native.
     const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
