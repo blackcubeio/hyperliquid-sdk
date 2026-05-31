@@ -1,6 +1,6 @@
 // ── Interfaces COMPLÉMENTAIRES Hyperliquid (hors contrat commun aux DEX) ────────────
 // Capacités **spécifiques** à HL, accessibles via le namespace uniforme `dex.native.<capacité>(label?)`
-// (convention partagée par les 4 SDK). Noms d'interfaces (`IMarketDataExtra`, `IAdvancedOrders`) et de
+// (convention partagée par les 4 SDK). Noms d'interfaces (`INativeMarket`, `IAdvancedOrders`) et de
 // méthodes **identiques** aux autres SDK pour le même geste ; seuls les types de params diffèrent.
 
 import type { approveAgent } from '../rest/exchange/approve-agent';
@@ -117,7 +117,7 @@ export interface ISubAccountsAdmin {
 }
 
 /** Données de marché supplémentaires HL (lectures **publiques**). */
-export interface IMarketDataExtra {
+export interface INativeMarket {
   allMids(dex?: string): ReturnType<typeof getAllMids>;
   candleSnapshot(params: Args<typeof getCandleSnapshot>): ReturnType<typeof getCandleSnapshot>;
   metaAndAssetCtxs(): ReturnType<typeof getMetaAndAssetCtxs>;
@@ -170,7 +170,7 @@ export interface IStaking {
 }
 
 /** Lectures de compte étendues HL (par adresse du signer ; `user` injecté par le scope). */
-export interface IAccountExtra {
+export interface INativeAccount {
   fees(): ReturnType<typeof getUserFees>;
   portfolio(): ReturnType<typeof getPortfolio>;
   funding(query: { startTime: number; endTime?: number }): ReturnType<typeof getUserFunding>;
