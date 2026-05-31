@@ -134,20 +134,22 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
   }, 30_000);
 
   it('perp().placeTwap() : place → cancel (réel) + referral.getInfo() + builders.getMaxFee()', async () => {
-    const [meta] = (await dex.native.marketData().getMetaAndAssetCtxs()) as [
+    const [meta] = (await dex.native.perp().getMetaAndAssetCtxs()) as [
       { universe: Array<{ name: string }> },
       unknown,
     ];
     const asset = meta.universe.findIndex((a) => a.name === 'BTC');
 
     // TWAP réel de taille minime sur 5 min, annulé immédiatement (slices toutes les 30 s → ~0 fill).
-    const res = (await dex.perp().placeTwap({ asset, isBuy: true, size: '0.001', minutes: 5 })) as {
+    const res = (await dex.native
+      .perp()
+      .placeTwap({ asset, isBuy: true, size: '0.001', minutes: 5 })) as {
       response?: { data?: { status?: { running?: { twapId?: number } } } };
     };
     console.log('twap place:', JSON.stringify(res));
     const twapId = res.response?.data?.status?.running?.twapId;
     if (typeof twapId === 'number') {
-      const cancel = await dex.perp().cancelTwap({ asset, twapId });
+      const cancel = await dex.native.perp().cancelTwap({ asset, twapId });
       expect(cancel).toBeDefined();
       console.log('twap place→cancel OK, twapId', twapId);
     }
@@ -164,7 +166,7 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
 
   it('perp() surplus ordres : placeBatch → getById → cancelMany', async () => {
     // Index d'actif BTC (perp) via la meta native.
-    const [meta] = (await dex.native.marketData().getMetaAndAssetCtxs()) as [
+    const [meta] = (await dex.native.perp().getMetaAndAssetCtxs()) as [
       { universe: Array<{ name: string }> },
       unknown,
     ];
@@ -175,7 +177,7 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     const mark = Number(prices.find((p) => p.name === 'BTC')?.mid ?? '0');
     const price = String(Math.max(1, Math.round(mark * 0.5)));
 
-    const res = (await dex
+    const res = (await dex.native
       .perp()
       .placeBatch([{ asset, isBuy: true, price, size: '0.001', tif: 'Alo' }])) as {
       response?: { data?: { statuses?: Array<{ resting?: { oid: number } }> } };
@@ -185,14 +187,14 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     expect(typeof oid).toBe('number');
 
     // Lecture signée : statut de l'ordre reposé.
-    const status = await dex.perp().getById({
+    const status = await dex.native.perp().getById({
       user: account as `0x${string}`,
       oid: oid as number,
     });
     expect(status).toBeDefined();
 
     // Annulation par lot.
-    const cancel = await dex.perp().cancelMany([{ asset, oid: oid as number }]);
+    const cancel = await dex.native.perp().cancelMany([{ asset, oid: oid as number }]);
     expect(cancel).toBeDefined();
   }, 30_000);
 });

@@ -1,23 +1,33 @@
 # Surface `native` — spécifique à `@blackcube/hyperliquid-sdk`
 
 Capacités **propres à Hyperliquid**, hors contrat unifié (voir [`common.md`](common.md) pour le portable).
-Accès uniforme à tous les SDK : **`dex.native.<capacité>(label?)`**. Les noms d'interfaces (`IAgents`,
-`IStaking`, `IVaults`…) et de méthodes sont **identiques entre SDK** ; seuls les types de params
-diffèrent. (Le surplus **ordres** — `placeBatch`/`placeTwap`/… — est porté par `perp()`/`spot()`,
-pas par un scope `native` ; voir plus bas.)
+Accès **`dex.native.<capacité>(label?)`**. Le namespace `native` **miroite** le commun :
+
+| commun (portable) | natif (spécifique) |
+|---|---|
+| `dex.perp()` | `dex.native.perp()` — reads marché + ordres avancés |
+| `dex.account()` | `dex.native.account()` — lectures de compte étendues |
+| `dex.transfers()` | — |
+
+Les capacités **sans équivalent commun** restent propres : `native.agents()`, `native.subAccounts()`,
+`native.vaults()`, `native.staking()`, `native.referral()`, `native.builders()`.
 
 ```ts
 const dex = new Hyperliquid({ desk: signer }, { default: 'desk' });
-dex.native.marketData().getAllMids();
+dex.native.perp().getAllMids();
 ```
 
-`label?` choisit le signer (défaut : signer par défaut). Lectures publiques (`marketData`) : `label`
-optionnel, `new Hyperliquid()` suffit. Écritures (`agents`, `staking`, `vaults` mutatifs) :
-signées (un signer est requis).
+`label?` choisit le signer (défaut : signer par défaut). Lectures publiques (`native.perp()` reads) :
+`label` optionnel, `new Hyperliquid()` suffit. Écritures (ordres avancés, `agents`, `staking`,
+`vaults` mutatifs) : signées (un signer est requis).
 
 ---
 
-## `native.marketData()` — `INativeMarket` (lectures publiques)
+## `native.perp()` — `INativePerp` (miroir natif de `perp()`)
+Surplus **perp** : lectures marché supplémentaires (publiques) **+** ordres avancés (signés).
+Formes natives assumées (shapes par **index d'actif**) — hors contrat portable, contrairement à
+`dex.perp().place()`.
+
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `getAllMids(dex?)` | `string?` | `Promise<AllMids>` (map `coin → mid`) |
@@ -25,20 +35,36 @@ signées (un signer est requis).
 | `getMetaAndAssetCtxs()` | — | `Promise<[Meta, AssetCtx[]]>` (perp) |
 | `getMetaAndAssetCtxsSpot()` | — | `Promise<[SpotMeta, SpotAssetCtx[]]>` |
 | `getFrontendOpenOrders(p)` | `{ user: 0x; dex? }` | `Promise<FrontendOrder[]>` |
-| `getPredictedFundings()` | — | `Promise<unknown>` (funding prédit par venue) |
-| `getPerpDexs()` | — | `Promise<unknown>` (perp DEX builder-deployed) |
+| `getPredictedFundings()` | — | `Promise<unknown>` |
+| `getPerpDexs()` | — | `Promise<unknown>` |
+| `placeBatch(orders)` | `PlaceBatchParams` | `Promise<unknown>` (statuses) |
+| `cancelMany(cancels)` | `CancelManyParams` | `Promise<unknown>` |
+| `cancelManyByClientId(cancels)` | `CancelManyByClientIdParams` | `Promise<unknown>` |
+| `editBatch(modifies)` | `EditBatchParams` | `Promise<unknown>` |
+| `getById(p)` | `{ user: 0x; oid: number \| 0x }` | `Promise<OrderStatusResponse>` |
+| `getFills(p)` | `{ user: 0x; startTime; endTime? }` | `Promise<UserFill[]>` |
+| `placeTwap(p)` | `TwapOrderParams` | `Promise<unknown>` (twapId) |
+| `cancelTwap(p)` | `TwapCancelParams` | `Promise<unknown>` |
+| `getTwapFills()` | — | `Promise<unknown>` (fills des slices) |
 
 ```ts
-await dex.native.marketData().getAllMids();
-await dex.native.marketData().getCandleSnapshot({ coin: 'BTC', interval: '1h', startTime: Date.now() - 6 * 3600_000 });
-await dex.native.marketData().getMetaAndAssetCtxs();
-await dex.native.marketData().getMetaAndAssetCtxsSpot();
-await dex.native.marketData().getFrontendOpenOrders({ user: '0x…' });
-await dex.native.marketData().getPredictedFundings();
-await dex.native.marketData().getPerpDexs();
+// lectures marché
+await dex.native.perp().getAllMids();
+await dex.native.perp().getMetaAndAssetCtxs();
+await dex.native.perp().getCandleSnapshot({ coin: 'BTC', interval: '1h', startTime: Date.now() - 6 * 3600_000 });
+// ordres avancés (formes natives par index d'actif)
+const res = await dex.native.perp().placeBatch([{ asset: 0, isBuy: true, price: '50000', size: '0.001', tif: 'Alo' }]);
+const oid = res.response.data.statuses[0].resting.oid;
+await dex.native.perp().getById({ user: '0x…', oid });
+await dex.native.perp().cancelMany([{ asset: 0, oid }]);
+await dex.native.perp().editBatch([{ oid, order: { asset: 0, isBuy: true, price: '49000', size: '0.001' } }]);
+await dex.native.perp().getFills({ user: '0x…', startTime: Date.now() - 86_400_000 });
+const twap = await dex.native.perp().placeTwap({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
+await dex.native.perp().cancelTwap({ asset: 0, twapId: 123 });
+await dex.native.perp().getTwapFills();
 ```
 
-## `native.account()` — `INativeAccount` (lectures de compte étendues)
+## `native.account()` — `INativeAccount` (miroir natif de `account()`, lectures étendues)
 *(`user` = adresse du signer, injectée par le scope.)*
 | Méthode | Entrée | Sortie |
 |---|---|---|
@@ -58,38 +84,6 @@ await dex.native.account().getLedger({ startTime: Date.now() - 7 * 86_400_000 })
 await dex.native.account().getRole();
 await dex.native.account().getRateLimit();
 await dex.native.account().getHistoricalOrders();
-```
-
-## Surplus ordres — `INativeOrders`, porté par `perp()` / `spot()`
-
-> Le surplus **ordres** (batch / cloid / lecture / fills / TWAP) n'a **pas** de scope `native`
-> dédié : il est exposé directement sur le scope marché `dex.perp()` / `dex.spot()`, aux côtés des
-> verbes communs (`place`/`cancel`/`edit`…).
-
-| Méthode | Entrée | Sortie |
-|---|---|---|
-| `placeBatch(orders)` | `PlaceBatchParams` | `Promise<unknown>` (statuses) |
-| `cancelMany(cancels)` | `CancelManyParams` | `Promise<unknown>` |
-| `cancelManyByClientId(cancels)` | `CancelManyByClientIdParams` | `Promise<unknown>` |
-| `editBatch(modifies)` | `EditBatchParams` | `Promise<unknown>` |
-| `getById(p)` | `{ user: 0x; oid: number \| 0x }` | `Promise<OrderStatusResponse>` |
-| `getFills(p)` | `{ user: 0x; startTime; endTime? }` | `Promise<UserFill[]>` |
-| `placeTwap(p)` | `TwapOrderParams` | `Promise<unknown>` (twapId) |
-| `cancelTwap(p)` | `TwapCancelParams` | `Promise<unknown>` |
-| `getTwapFills()` | — | `Promise<unknown>` (fills des slices) |
-
-```ts
-const res = await dex.perp().placeBatch([{ asset: 0, isBuy: true, price: '50000', size: '0.001', tif: 'Alo' }]);
-const oid = res.response.data.statuses[0].resting.oid;
-await dex.perp().getById({ user: '0x…', oid });
-await dex.perp().cancelMany([{ asset: 0, oid }]);
-await dex.perp().cancelManyByClientId([{ asset: 0, cloid: '0x…' }]);
-await dex.perp().editBatch([{ oid, order: { asset: 0, isBuy: true, price: '49000', size: '0.001' } }]);
-await dex.perp().getFills({ user: '0x…', startTime: Date.now() - 86_400_000 });
-// TWAP
-const twap = await dex.perp().placeTwap({ asset: 0, isBuy: true, size: '0.001', minutes: 30 });
-await dex.perp().cancelTwap({ asset: 0, twapId: 123 });
-await dex.perp().getTwapFills();
 ```
 
 ## `native.agents()` — `IAgents` (API wallets / agents)
@@ -187,8 +181,8 @@ await dex.native.builders().getMaxFee({ user: '0x…', builder: '0x…' });
 ---
 
 > **Validation** (`tests/native.testnet.test.ts` + `tests/native.test.ts`, réseaux réels) :
-> - **public mainnet** : `marketData` (getAllMids, getMetaAndAssetCtxs, getCandleSnapshot, getPredictedFundings, getPerpDexs).
-> - **testnet signé/réel** : surplus ordres sur `perp()` (placeBatch → getById → cancelMany, placeTwap
+> - **public mainnet** : `native.perp()` reads (getAllMids, getMetaAndAssetCtxs, getCandleSnapshot, getPredictedFundings, getPerpDexs).
+> - **testnet signé/réel** : `native.perp()` ordres avancés (placeBatch → getById → cancelMany, placeTwap
 >   → cancelTwap, twapId réel), `account` (getFees/getRole/getRateLimit/getPortfolio/getHistoricalOrders),
 >   `transfers().transfer` perp↔spot (commun, signé), `vaults.getEquities` + `vaults.transfer` (signé),
 >   `staking` (lectures + withdraw signé), `subAccounts.getList` + transfert USDC aller-retour via
