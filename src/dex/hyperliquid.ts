@@ -24,6 +24,7 @@ import { cWithdraw } from '../rest/exchange/c-withdraw';
 import { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
 import { cancelOrders } from '../rest/exchange/cancel-order';
 import { createSubAccount } from '../rest/exchange/create-sub-account';
+import { createVault } from '../rest/exchange/create-vault';
 // ── Surplus spécifique HL (namespace native) ──
 import { batchModifyOrders } from '../rest/exchange/modify-order';
 import { placeOrders } from '../rest/exchange/place-order';
@@ -37,6 +38,9 @@ import { tokenDelegate } from '../rest/exchange/token-delegate';
 import { updateIsolatedMargin } from '../rest/exchange/update-isolated-margin';
 import { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import { usdSend } from '../rest/exchange/usd-send';
+import { vaultDistribute } from '../rest/exchange/vault-distribute';
+import { vaultModify } from '../rest/exchange/vault-modify';
+import { vaultTransfer } from '../rest/exchange/vault-transfer';
 import { withdraw } from '../rest/exchange/withdraw';
 import { getBalances } from '../rest/get-balances';
 import { getCandles } from '../rest/get-candles';
@@ -72,6 +76,8 @@ import { getUserFunding } from '../rest/info/get-user-funding';
 import { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
 import { getUserRateLimit } from '../rest/info/get-user-rate-limit';
 import { getUserRole } from '../rest/info/get-user-role';
+import { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
+import { getVaultDetails } from '../rest/info/get-vault-details';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
 import { updateLeverage } from '../rest/update-leverage';
@@ -110,6 +116,7 @@ import type {
   IStaking,
   ISubAccountsAdmin,
   ITransfers,
+  IVaults,
 } from './native-contract';
 
 /** Options de construction d'un {@link Hyperliquid}. */
@@ -539,6 +546,28 @@ class HyperliquidMarketDataScope extends HyperliquidNativeScope implements IMark
   }
 }
 
+/** Vaults : dépôt/retrait, création, réglages, distribution, lectures. */
+class HyperliquidVaultsScope extends HyperliquidNativeScope implements IVaults {
+  public transfer(params: Parameters<typeof vaultTransfer>[1]) {
+    return vaultTransfer(this.client, params, this.signed());
+  }
+  public create(params: Parameters<typeof createVault>[1]) {
+    return createVault(this.client, params, this.signed());
+  }
+  public modify(params: Parameters<typeof vaultModify>[1]) {
+    return vaultModify(this.client, params, this.signed());
+  }
+  public distribute(params: Parameters<typeof vaultDistribute>[1]) {
+    return vaultDistribute(this.client, params, this.signed());
+  }
+  public details(params: Parameters<typeof getVaultDetails>[1]) {
+    return getVaultDetails(this.client, params, this.label);
+  }
+  public equities() {
+    return getUserVaultEquities(this.client, { user: this.user() }, this.signed());
+  }
+}
+
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation, lectures. */
 class HyperliquidStakingScope extends HyperliquidNativeScope implements IStaking {
   public deposit(params: Parameters<typeof cDeposit>[1]) {
@@ -688,6 +717,8 @@ export class Hyperliquid {
       subAccounts: (label?: string) => new HyperliquidSubAccountsScope(this.client, resolve(label)),
       /** Staking HYPE : dépôt/retrait, délégation, lectures. */
       staking: (label?: string) => new HyperliquidStakingScope(this.client, resolve(label)),
+      /** Vaults : dépôt/retrait, création, réglages, distribution, lectures. */
+      vaults: (label?: string) => new HyperliquidVaultsScope(this.client, resolve(label)),
     };
   }
 

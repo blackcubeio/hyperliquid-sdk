@@ -9,6 +9,7 @@ import type { cWithdraw } from '../rest/exchange/c-withdraw';
 import type { cancelOrdersByCloid } from '../rest/exchange/cancel-by-cloid';
 import type { cancelOrders } from '../rest/exchange/cancel-order';
 import type { createSubAccount } from '../rest/exchange/create-sub-account';
+import type { createVault } from '../rest/exchange/create-vault';
 import type { batchModifyOrders } from '../rest/exchange/modify-order';
 import type { placeOrders } from '../rest/exchange/place-order';
 import type { sendAsset } from '../rest/exchange/send-asset';
@@ -19,6 +20,9 @@ import type { subAccountTransfer } from '../rest/exchange/sub-account-transfer';
 import type { tokenDelegate } from '../rest/exchange/token-delegate';
 import type { usdClassTransfer } from '../rest/exchange/usd-class-transfer';
 import type { usdSend } from '../rest/exchange/usd-send';
+import type { vaultDistribute } from '../rest/exchange/vault-distribute';
+import type { vaultModify } from '../rest/exchange/vault-modify';
+import type { vaultTransfer } from '../rest/exchange/vault-transfer';
 import type { getAllMids } from '../rest/info/get-all-mids';
 import type { getCandleSnapshot } from '../rest/info/get-candle-snapshot';
 import type { getDelegations } from '../rest/info/get-delegations';
@@ -40,6 +44,8 @@ import type { getUserFunding } from '../rest/info/get-user-funding';
 import type { getUserNonFundingLedgerUpdates } from '../rest/info/get-user-non-funding-ledger-updates';
 import type { getUserRateLimit } from '../rest/info/get-user-rate-limit';
 import type { getUserRole } from '../rest/info/get-user-role';
+import type { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
+import type { getVaultDetails } from '../rest/info/get-vault-details';
 
 /** `params` (2ᵉ arg) d'une fonction REST `fn(client, params, label)`. */
 type Args<F extends (...a: never[]) => unknown> = Parameters<F>[1];
@@ -65,6 +71,11 @@ export type SubAccountModify = Args<typeof subAccountModify>;
 export type StakingDeposit = Args<typeof cDeposit>;
 export type StakingWithdraw = Args<typeof cWithdraw>;
 export type Delegate = Args<typeof tokenDelegate>;
+// vaults
+export type VaultTransfer = Args<typeof vaultTransfer>;
+export type CreateVault = Args<typeof createVault>;
+export type VaultModify = Args<typeof vaultModify>;
+export type VaultDistribute = Args<typeof vaultDistribute>;
 // advancedOrders (`PlaceBatch`/`CancelMany` partagés Aster)
 export type PlaceBatch = Args<typeof placeOrders>;
 export type CancelMany = Args<typeof cancelOrders>;
@@ -104,6 +115,16 @@ export interface IMarketDataExtra {
   ): ReturnType<typeof getFrontendOpenOrders>;
   predictedFundings(): ReturnType<typeof getPredictedFundings>;
   perpDexs(): ReturnType<typeof getPerpDexs>;
+}
+
+/** Vaults HL : dépôt/retrait, création, réglages, distribution, lectures. */
+export interface IVaults {
+  transfer(params: VaultTransfer): ReturnType<typeof vaultTransfer>;
+  create(params: CreateVault): ReturnType<typeof createVault>;
+  modify(params: VaultModify): ReturnType<typeof vaultModify>;
+  distribute(params: VaultDistribute): ReturnType<typeof vaultDistribute>;
+  details(params: Args<typeof getVaultDetails>): ReturnType<typeof getVaultDetails>;
+  equities(): ReturnType<typeof getUserVaultEquities>;
 }
 
 /** Staking HYPE : dépôt/retrait du solde de staking, délégation à un validateur, lectures. */

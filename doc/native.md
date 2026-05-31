@@ -121,6 +121,26 @@ await dex.native.subAccounts().modify({ subAccountUser: '0x…', name: 'bot-2' }
 await dex.native.subAccounts().list();
 ```
 
+## `native.vaults()` — `IVaults` (vaults)
+| Méthode | Entrée | Sortie |
+|---|---|---|
+| `transfer(p)` | `VaultTransfer` `{ vaultAddress: 0x; isDeposit; usd }` | `Promise<unknown>` (dépôt/retrait) |
+| `create(p)` | `CreateVault` `{ name; description; initialUsd≥100 }` | `Promise<unknown>` |
+| `modify(p)` | `VaultModify` `{ vaultAddress; allowDeposits?; alwaysCloseOnWithdraw? }` | `Promise<unknown>` |
+| `distribute(p)` | `VaultDistribute` `{ vaultAddress; usd }` | `Promise<unknown>` |
+| `details(p)` | `{ vaultAddress: 0x; user? }` | `Promise<unknown>` |
+| `equities()` | — | `Promise<unknown>` (équités du compte dans les vaults suivis) |
+
+```ts
+await dex.native.vaults().transfer({ vaultAddress: '0x…', isDeposit: true, usd: '100' });   // dépôt
+await dex.native.vaults().transfer({ vaultAddress: '0x…', isDeposit: false, usd: '100' });  // retrait
+await dex.native.vaults().create({ name: 'My Vault', description: 'desc 10+ chars', initialUsd: '100' });
+await dex.native.vaults().modify({ vaultAddress: '0x…', allowDeposits: false });
+await dex.native.vaults().distribute({ vaultAddress: '0x…', usd: '50' });
+await dex.native.vaults().details({ vaultAddress: '0x…' });
+await dex.native.vaults().equities();
+```
+
 ## `native.staking()` — `IStaking` (staking HYPE)
 *(le retrait de staking a un **délai de déblocage** ; `deposit`/`withdraw`/`delegate` sont des écritures à lockup.)*
 | Méthode | Entrée | Sortie |

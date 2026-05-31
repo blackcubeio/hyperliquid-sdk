@@ -85,19 +85,21 @@ export function postExchange<TResponse>(
 /** Signe une action L1 avec le signer `label` (obligatoire) puis la poste sur son réseau. */
 export function exchangeL1Action<TResponse>(
   client: HyperliquidClient,
-  action: Record<string, unknown>,
+  action: Record<string, unknown> | ((nonce: number) => Record<string, unknown>),
   label: string,
 ): Promise<TResponse> {
   const signer = resolveSigner(client, label);
   const nonce = Date.now();
+  // Certaines actions (ex. createVault) portent le `nonce` comme champ : on le résout d'abord.
+  const resolved = typeof action === 'function' ? action(nonce) : action;
   const signature = signL1Action({
     privateKey: signer.privateKey,
-    action,
+    action: resolved,
     nonce,
     isTestnet: signer.network === 'testnet',
     vaultAddress: signer.vaultAddress,
   });
-  const body: Record<string, unknown> = { action, nonce, signature };
+  const body: Record<string, unknown> = { action: resolved, nonce, signature };
   if (signer.vaultAddress !== undefined) {
     body.vaultAddress = signer.vaultAddress;
   }
