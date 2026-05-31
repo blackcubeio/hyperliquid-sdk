@@ -15,6 +15,7 @@ import type {
   UserTrade,
 } from '../common/types';
 import { assetIndex, dateToMs } from '../common/utils';
+import { UserTradeConverter } from '../converters/user-trade';
 import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
 import { editOrder } from '../rest/edit-order';
@@ -28,7 +29,6 @@ import { createSubAccount } from '../rest/exchange/create-sub-account';
 import { createVault } from '../rest/exchange/create-vault';
 // ── Surplus spécifique HL (namespace native) ──
 import { batchModifyOrders } from '../rest/exchange/modify-order';
-import { placeOrders } from '../rest/exchange/place-order';
 import { scheduleCancel } from '../rest/exchange/schedule-cancel';
 import { setReferrer } from '../rest/exchange/set-referrer';
 import { spotSend } from '../rest/exchange/spot-send';
@@ -84,6 +84,7 @@ import { getUserRole } from '../rest/info/get-user-role';
 import { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import { getVaultDetails } from '../rest/info/get-vault-details';
+import { placeBatchOrders } from '../rest/place-batch';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
 import { updateLeverage } from '../rest/update-leverage';
@@ -599,9 +600,9 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
   public getPerpDexs() {
     return getPerpDexs(this.client, this.label);
   }
-  // ── ordres avancés (signés ; formes natives par index d'actif) ──
-  public placeBatch(orders: Parameters<typeof placeOrders>[1]) {
-    return placeOrders(this.client, orders, this.signed());
+  // ── ordres avancés (signés ; I/O normalisés, types communs) ──
+  public placeBatch(orders: PlaceOrderParams[]): Promise<Order[]> {
+    return placeBatchOrders(this.client, orders, this.signed());
   }
   public cancelMany(params: Parameters<typeof cancelOrders>[1]) {
     return cancelOrders(this.client, params, this.signed());
@@ -615,8 +616,17 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
   public getById(params: Parameters<typeof getOrderStatus>[1]) {
     return getOrderStatus(this.client, params, this.label);
   }
-  public getFills(params: Parameters<typeof getUserFillsByTime>[1]) {
-    return getUserFillsByTime(this.client, params, this.label);
+  public getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]> {
+    const converter = new UserTradeConverter();
+    return getUserFillsByTime(
+      this.client,
+      {
+        user: this.user() as Hex,
+        startTime: dateToMs(params.startTime),
+        endTime: params.endTime === undefined ? undefined : dateToMs(params.endTime),
+      },
+      this.signed(),
+    ).then((fills) => fills.map((f) => converter.toCommon(f)));
   }
   public placeTwap(params: Parameters<typeof twapOrder>[1]) {
     return twapOrder(this.client, params, this.signed());

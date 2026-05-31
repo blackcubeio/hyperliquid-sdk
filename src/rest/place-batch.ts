@@ -1,0 +1,83 @@
+import type { HyperliquidClient } from '../common/config';
+import type { Order, Tif } from '../common/types';
+import { assetIndex } from '../common/utils';
+import { exchangeL1Action } from './client';
+import { buildOrderAction } from './exchange/place-order';
+import { getMeta } from './info/get-meta';
+
+/** Leg d'un lot, au **vocabulaire commun** (= forme de `PlaceOrderParams` du contrat). */
+export interface BatchOrderLeg {
+  name: string;
+  side: 'buy' | 'sell';
+  type: 'limit' | 'market' | 'stop' | 'stopMarket' | 'takeProfit' | 'takeProfitMarket';
+  size: string;
+  price?: string;
+  triggerPrice?: string;
+  tif?: 'gtc' | 'ioc' | 'fok' | 'alo';
+  reduceOnly?: boolean;
+  clientId?: string;
+}
+
+const TIF: Record<'gtc' | 'ioc' | 'fok' | 'alo', Tif> = {
+  gtc: 'Gtc',
+  ioc: 'Ioc',
+  fok: 'Ioc',
+  alo: 'Alo',
+};
+
+interface BatchResponse {
+  response?: { data?: { statuses?: { resting?: { oid: number }; filled?: { oid: number } }[] } };
+}
+
+/**
+ * Place un **lot** d'ordres au format unifié (écriture signée, HL `/exchange`, 1 seule action).
+ * Entrée = legs en **vocabulaire commun** ; sortie = `Order[]` (type commun), 1 `Order` par leg,
+ * `id`/`status`/`filled` dérivés de la réponse — **même normalisation que `placeOrder`**.
+ */
+export function placeBatchOrders(
+  client: HyperliquidClient,
+  orders: BatchOrderLeg[],
+  label: string,
+): Promise<Order[]> {
+  // HL exige un `price` par leg (limite, ou borne de slippage en market) — comme `placeOrder`.
+  const priced = orders.map((o) => {
+    if (o.price === undefined) {
+      throw new Error('placeBatch (Hyperliquid) : `price` est requis pour chaque leg.');
+    }
+    return { ...o, price: o.price };
+  });
+  return getMeta(client, undefined, label).then((meta) => {
+    const legs = priced.map((o) => ({
+      asset: assetIndex(meta.universe, o.name),
+      isBuy: o.side === 'buy',
+      price: o.price,
+      size: o.size,
+      reduceOnly: o.reduceOnly,
+      tif: o.type === 'market' ? ('Ioc' as Tif) : TIF[o.tif ?? 'gtc'],
+      cloid: o.clientId as `0x${string}` | undefined,
+    }));
+    return exchangeL1Action<BatchResponse>(client, buildOrderAction(legs), label).then((res) => {
+      const statuses = res.response?.data?.statuses ?? [];
+      return priced.map((o, i) => {
+        const status = statuses[i];
+        const oid = status?.resting?.oid ?? status?.filled?.oid;
+        return {
+          name: o.name,
+          kind: 'perp' as const,
+          id: oid === undefined ? '' : String(oid),
+          clientId: o.clientId ?? null,
+          side: o.side,
+          type: o.type,
+          price: o.price,
+          size: o.size,
+          filled: status?.filled === undefined ? '0' : o.size,
+          status: status?.filled === undefined ? ('open' as const) : ('filled' as const),
+          tif: o.tif ?? (o.type === 'market' ? 'ioc' : 'gtc'),
+          reduceOnly: o.reduceOnly ?? null,
+          time: Date.now(),
+          xtras: { status },
+        };
+      });
+    });
+  });
+}
