@@ -30,7 +30,6 @@ import { createVault } from '../rest/exchange/create-vault';
 import { batchModifyOrders } from '../rest/exchange/modify-order';
 import { placeOrders } from '../rest/exchange/place-order';
 import { scheduleCancel } from '../rest/exchange/schedule-cancel';
-import { sendAsset } from '../rest/exchange/send-asset';
 import { setReferrer } from '../rest/exchange/set-referrer';
 import { spotSend } from '../rest/exchange/spot-send';
 import { subAccountModify } from '../rest/exchange/sub-account-modify';
@@ -106,6 +105,7 @@ import type {
   IRealtime,
   IRemovableMargin,
   ITrading,
+  ITransfers,
   IsolatedMarginParams,
   KeyHelper,
   LeverageParams,
@@ -113,6 +113,7 @@ import type {
   OrderBookParams,
   PlaceOrderParams,
   SymbolParams,
+  TransferParams,
   WithdrawParams,
 } from './contract';
 import type {
@@ -124,7 +125,6 @@ import type {
   IReferral,
   IStaking,
   ISubAccountsAdmin,
-  ITransfers,
   ITwap,
   IVaults,
 } from './native-contract';
@@ -502,19 +502,65 @@ class HyperliquidAgentsScope extends HyperliquidNativeScope implements IAgents {
   }
 }
 
-/** Transferts : USDC, bascule perp↔spot, token spot. */
-class HyperliquidTransfersScope extends HyperliquidNativeScope implements ITransfers {
-  public usdSend(params: Parameters<typeof usdSend>[1]) {
-    return usdSend(this.client, params, this.signed());
-  }
-  public usdClassTransfer(params: Parameters<typeof usdClassTransfer>[1]) {
-    return usdClassTransfer(this.client, params, this.signed());
-  }
-  public spotSend(params: Parameters<typeof spotSend>[1]) {
-    return spotSend(this.client, params, this.signed());
-  }
-  public sendAsset(params: Parameters<typeof sendAsset>[1]) {
-    return sendAsset(this.client, params, this.signed());
+/**
+ * Transferts de fonds **unifiés** (`transfers()` commun). Route le couple `from`/`to` vers l'action
+ * native HL : perp↔spot (`usdClassTransfer`), vers un compte (`usdSend`/`spotSend`), master↔sous-compte
+ * (`subAccountTransfer`/`subAccountSpotTransfer`). `asset` défaut `USDC` ; un token spot ⇒ `"NOM:0x…"`.
+ */
+class HyperliquidTransfers extends HyperliquidNativeScope implements ITransfers {
+  public transfer(p: TransferParams): Promise<unknown> {
+    const from = p.from ?? { wallet: 'perp' as const };
+    const asset = p.asset ?? 'USDC';
+    const usdc = asset === 'USDC';
+    if ('wallet' in from && 'wallet' in p.to) {
+      if (from.wallet === p.to.wallet) {
+        throw new Error('transfer : `from` et `to` identiques.');
+      }
+      return usdClassTransfer(
+        this.client,
+        { amount: p.amount, toPerp: p.to.wallet === 'perp' },
+        this.signed(),
+      );
+    }
+    if ('subAccount' in p.to) {
+      const sub = p.to.subAccount as `0x${string}`;
+      return usdc
+        ? subAccountTransfer(
+            this.client,
+            { subAccountUser: sub, isDeposit: true, usd: p.amount },
+            this.signed(),
+          )
+        : subAccountSpotTransfer(
+            this.client,
+            { subAccountUser: sub, isDeposit: true, token: asset, amount: p.amount },
+            this.signed(),
+          );
+    }
+    if ('subAccount' in from) {
+      const sub = from.subAccount as `0x${string}`;
+      return usdc
+        ? subAccountTransfer(
+            this.client,
+            { subAccountUser: sub, isDeposit: false, usd: p.amount },
+            this.signed(),
+          )
+        : subAccountSpotTransfer(
+            this.client,
+            { subAccountUser: sub, isDeposit: false, token: asset, amount: p.amount },
+            this.signed(),
+          );
+    }
+    if ('account' in p.to) {
+      const dest = p.to.account as `0x${string}`;
+      return usdc
+        ? usdSend(this.client, { destination: dest, amount: p.amount }, this.signed())
+        : spotSend(
+            this.client,
+            { destination: dest, token: asset, amount: p.amount },
+            this.signed(),
+          );
+    }
+    throw new Error('transfer : combinaison from/to non supportée par Hyperliquid.');
   }
 }
 
@@ -731,6 +777,11 @@ export class Hyperliquid {
     return new HyperliquidAccount(this.client, this.resolve(label));
   }
 
+  /** Scope **transferts** unifié (compte/sous-compte/wallet perp↔spot). */
+  public transfers(label?: string): HyperliquidTransfers {
+    return new HyperliquidTransfers(this.client, this.resolve(label));
+  }
+
   /** Helpers crypto (EVM). */
   public helpers(): HyperliquidHelpers {
     return new HyperliquidHelpers();
@@ -757,7 +808,6 @@ export class Hyperliquid {
     const resolve = (label?: string) => this.resolve(label);
     return {
       agents: (label?: string) => new HyperliquidAgentsScope(this.client, resolve(label)),
-      transfers: (label?: string) => new HyperliquidTransfersScope(this.client, resolve(label)),
       marketData: (label?: string) => new HyperliquidMarketDataScope(this.client, resolve(label)),
       advancedOrders: (label?: string) =>
         new HyperliquidAdvancedOrdersScope(this.client, resolve(label)),
