@@ -2,6 +2,7 @@ import { type HyperliquidClient, type InitOptions, init } from '../common/config
 import type {
   Balance,
   Candle,
+  FrontendOrder,
   FundingRate,
   Hex,
   MarketKind,
@@ -15,6 +16,7 @@ import type {
   UserTrade,
 } from '../common/types';
 import { assetIndex, dateToMs } from '../common/utils';
+import { FrontendOrderConverter } from '../converters/frontend-order';
 import { UserTradeConverter } from '../converters/user-trade';
 import { cancelAllOrders } from '../rest/cancel-all-orders';
 import { cancelOrder } from '../rest/cancel-order';
@@ -119,6 +121,7 @@ import type {
 } from './contract';
 import type {
   AccountHistoryParams,
+  CandleSnapshotParams,
   IAgents,
   IBuilders,
   INativeAccount,
@@ -127,6 +130,7 @@ import type {
   IStaking,
   ISubAccountsAdmin,
   IVaults,
+  Mid,
 } from './native-contract';
 
 /** Options de construction d'un {@link Hyperliquid}. */
@@ -579,11 +583,22 @@ class HyperliquidSubAccountsScope extends HyperliquidNativeScope implements ISub
  */
 class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePerp {
   // ── lectures marché supplémentaires (publiques) ──
-  public getAllMids(dex?: string) {
-    return getAllMids(this.client, dex, this.label);
+  public getAllMids(dex?: string): Promise<Mid[]> {
+    return getAllMids(this.client, dex, this.label).then((mids) =>
+      Object.entries(mids).map(([name, mid]) => ({ name, mid })),
+    );
   }
-  public getCandleSnapshot(params: Parameters<typeof getCandleSnapshot>[1]) {
-    return getCandleSnapshot(this.client, params, this.label);
+  public getCandleSnapshot(params: CandleSnapshotParams): Promise<Candle[]> {
+    return getCandleSnapshot(
+      this.client,
+      {
+        coin: params.name,
+        interval: params.interval,
+        startTime: params.startTime === undefined ? 0 : dateToMs(params.startTime),
+        endTime: params.endTime === undefined ? undefined : dateToMs(params.endTime),
+      },
+      this.label,
+    );
   }
   public getMetaAndAssetCtxs() {
     return getMetaAndAssetCtxs(this.client, this.label);
@@ -591,8 +606,14 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
   public getMetaAndAssetCtxsSpot() {
     return getMetaAndAssetCtxsSpot(this.client, this.label);
   }
-  public getFrontendOpenOrders(params: Parameters<typeof getFrontendOpenOrders>[1]) {
-    return getFrontendOpenOrders(this.client, params, this.label);
+  public getFrontendOpenOrders(params?: { name?: string }): Promise<Order[]> {
+    const converter = new FrontendOrderConverter();
+    return getFrontendOpenOrders(this.client, { user: this.user() as Hex }, this.label).then(
+      (orders) => {
+        const mapped = orders.map((o) => converter.toCommon(o));
+        return params?.name === undefined ? mapped : mapped.filter((o) => o.name === params.name);
+      },
+    );
   }
   public getPredictedFundings() {
     return getPredictedFundings(this.client, this.label);
@@ -613,8 +634,22 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
   public editBatch(params: Parameters<typeof batchModifyOrders>[1]) {
     return batchModifyOrders(this.client, params, this.signed());
   }
-  public getById(params: Parameters<typeof getOrderStatus>[1]) {
-    return getOrderStatus(this.client, params, this.label);
+  public getById(params: { name: string; id: string }): Promise<Order> {
+    return getOrderStatus(
+      this.client,
+      { user: this.user() as Hex, oid: Number(params.id) },
+      this.label,
+    ).then((res) => {
+      if (res.order === undefined) {
+        throw new Error(`getById (Hyperliquid) : ordre ${params.id} introuvable.`);
+      }
+      // `orderStatus.order` enveloppe `{ order: FrontendOrder, status, statusTimestamp }`.
+      const wrapped = res.order as { order: FrontendOrder; status?: string };
+      const order = new FrontendOrderConverter().toCommon(wrapped.order);
+      return wrapped.status === undefined
+        ? order
+        : { ...order, xtras: { ...order.xtras, statusRaw: wrapped.status } };
+    });
   }
   public getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]> {
     const converter = new UserTradeConverter();
