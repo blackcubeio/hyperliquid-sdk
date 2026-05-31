@@ -85,7 +85,7 @@ import type {
   IAgents,
   IMarketDataExtra,
   ITransfers,
-} from './hyperliquid-contract';
+} from './native-contract';
 
 /** Options de construction d'un {@link Hyperliquid}. */
 export interface HyperliquidDexOptions extends Omit<InitOptions, 'signers'> {
