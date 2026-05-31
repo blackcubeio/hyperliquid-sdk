@@ -6,12 +6,16 @@ const dex = new Hyperliquid();
 
 describe('Hyperliquid — namespace native (mainnet réel, public)', () => {
   it('expose les capacités attendues', () => {
-    for (const c of ['agents', 'marketData', 'advancedOrders', 'account']) {
+    for (const c of ['agents', 'marketData', 'account']) {
       expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
     }
-    // `transfers` est COMMUN (top-level), plus dans native.
+    // `transfers` COMMUN (top-level) ; surplus ordres (placeBatch/twap…) porté par perp()/spot().
     expect(typeof dex.transfers).toBe('function');
+    expect(typeof dex.perp().placeBatch).toBe('function');
+    expect(typeof dex.perp().placeTwap).toBe('function');
     expect((dex.native as Record<string, unknown>).transfers).toBeUndefined();
+    expect((dex.native as Record<string, unknown>).advancedOrders).toBeUndefined();
+    expect((dex.native as Record<string, unknown>).twap).toBeUndefined();
   });
 
   it('native.marketData() — predictedFundings() + perpDexs()', async () => {

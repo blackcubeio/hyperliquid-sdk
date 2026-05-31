@@ -36,7 +36,7 @@ describe.skipIf(!ready)('Hyperliquid.ws() user-data (testnet réel)', () => {
     const off = hl.ws().subscribeOrders((order) => orders.push(order));
     try {
       await new Promise((r) => setTimeout(r, 1500));
-      await hl.perp().placeOrder({
+      await hl.perp().place({
         name: 'BTC',
         side: 'buy',
         type: 'limit',
@@ -54,7 +54,7 @@ describe.skipIf(!ready)('Hyperliquid.ws() user-data (testnet réel)', () => {
       expect(typeof order.price).toBe('string');
       await hl
         .perp()
-        .cancelOrder({ name: 'BTC', id: order.id })
+        .cancel({ name: 'BTC', id: order.id })
         .catch(() => {});
     } finally {
       off();
@@ -69,7 +69,7 @@ describe.skipIf(!ready)('Hyperliquid.ws() user-data (testnet réel)', () => {
     const off = hl.ws().subscribeUserTrades((t) => fills.push(t));
     try {
       await new Promise((r) => setTimeout(r, 1500));
-      await hl.perp().placeOrder({
+      await hl.perp().place({
         name: 'BTC',
         side: 'buy',
         type: 'market',
@@ -87,7 +87,7 @@ describe.skipIf(!ready)('Hyperliquid.ws() user-data (testnet réel)', () => {
     } finally {
       await hl
         .perp()
-        .placeOrder({
+        .place({
           name: 'BTC',
           side: 'sell',
           type: 'market',

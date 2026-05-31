@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Hyperliquid } from '../src/dex/hyperliquid';
 import { readEnv } from './_env';
 
-// Validation des capacités **signées** du namespace `native` sur **testnet réel** (politique : on
-// valide toujours les capacités signées). On exerce le chemin signé d'`advancedOrders` :
-// placeBatch (ordre ALO loin du marché, ne fill pas) → query (lecture signée) → cancelMany.
+// Validation des capacités **signées** sur **testnet réel** (politique : on valide toujours les
+// capacités signées). Le surplus ordres est porté par `perp()`/`spot()` : on exerce le chemin signé
+// placeBatch (ordre ALO loin du marché, ne fill pas) → getById (lecture signée) → cancelMany.
 const account = readEnv('EVM_PUBLIC_KEY');
 const privateKey = readEnv('EVM_PRIVATE_KEY');
 const ready =
@@ -135,7 +135,7 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     }
   }, 30_000);
 
-  it('native.twap() : place → cancel (réel) + referral.info() + builderFee.max()', async () => {
+  it('perp().placeTwap() : place → cancel (réel) + referral.info() + builderFee.max()', async () => {
     const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
       { universe: Array<{ name: string }> },
       unknown,
@@ -143,15 +143,13 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     const asset = meta.universe.findIndex((a) => a.name === 'BTC');
 
     // TWAP réel de taille minime sur 5 min, annulé immédiatement (slices toutes les 30 s → ~0 fill).
-    const res = (await dex.native
-      .twap()
-      .place({ asset, isBuy: true, size: '0.001', minutes: 5 })) as {
+    const res = (await dex.perp().placeTwap({ asset, isBuy: true, size: '0.001', minutes: 5 })) as {
       response?: { data?: { status?: { running?: { twapId?: number } } } };
     };
     console.log('twap place:', JSON.stringify(res));
     const twapId = res.response?.data?.status?.running?.twapId;
     if (typeof twapId === 'number') {
-      const cancel = await dex.native.twap().cancel({ asset, twapId });
+      const cancel = await dex.perp().cancelTwap({ asset, twapId });
       expect(cancel).toBeDefined();
       console.log('twap place→cancel OK, twapId', twapId);
     }
@@ -166,7 +164,7 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     // `referral.set` (one-shot) et `builderFee.approve` (persistant) sont testés manuellement.
   }, 30_000);
 
-  it('native.advancedOrders() : placeBatch → query → cancelMany', async () => {
+  it('perp() surplus ordres : placeBatch → getById → cancelMany', async () => {
     // Index d'actif BTC (perp) via la meta native.
     const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
       { universe: Array<{ name: string }> },
@@ -179,8 +177,8 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     const mark = Number(prices.find((p) => p.name === 'BTC')?.mid ?? '0');
     const price = String(Math.max(1, Math.round(mark * 0.5)));
 
-    const res = (await dex.native
-      .advancedOrders()
+    const res = (await dex
+      .perp()
       .placeBatch([{ asset, isBuy: true, price, size: '0.001', tif: 'Alo' }])) as {
       response?: { data?: { statuses?: Array<{ resting?: { oid: number } }> } };
     };
@@ -189,14 +187,14 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     expect(typeof oid).toBe('number');
 
     // Lecture signée : statut de l'ordre reposé.
-    const status = await dex.native.advancedOrders().query({
+    const status = await dex.perp().getById({
       user: account as `0x${string}`,
       oid: oid as number,
     });
     expect(status).toBeDefined();
 
     // Annulation par lot.
-    const cancel = await dex.native.advancedOrders().cancelMany([{ asset, oid: oid as number }]);
+    const cancel = await dex.perp().cancelMany([{ asset, oid: oid as number }]);
     expect(cancel).toBeDefined();
   }, 30_000);
 });

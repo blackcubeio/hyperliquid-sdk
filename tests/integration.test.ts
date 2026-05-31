@@ -29,7 +29,7 @@ describe.skipIf(!ready)('intégration testnet réel (classe Hyperliquid)', () =>
     const price = String(Math.max(1, Math.round(mark * 0.5)));
     const cloid = `0x${globalThis.crypto.randomUUID().replace(/-/g, '')}` as `0x${string}`;
 
-    const order = await dex.perp().placeOrder({
+    const order = await dex.perp().place({
       name: 'BTC',
       side: 'buy',
       type: 'limit',
@@ -43,6 +43,6 @@ describe.skipIf(!ready)('intégration testnet réel (classe Hyperliquid)', () =>
     expect(order.clientId).toBe(cloid);
     expect(typeof order.id).toBe('string');
 
-    await dex.perp().cancelOrder({ name: 'BTC', id: order.id });
+    await dex.perp().cancel({ name: 'BTC', id: order.id });
   }, 30_000);
 });

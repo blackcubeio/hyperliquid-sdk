@@ -122,13 +122,6 @@ export interface IVaults {
   equities(): ReturnType<typeof getUserVaultEquities>;
 }
 
-/** TWAP : placement, annulation, fills des slices. */
-export interface ITwap {
-  place(params: TwapOrder): ReturnType<typeof twapOrder>;
-  cancel(params: TwapCancel): ReturnType<typeof twapCancel>;
-  sliceFills(): ReturnType<typeof getUserTwapSliceFills>;
-}
-
 /** Parrainage : définir son code (une seule fois), lire l'état de parrainage. */
 export interface IReferral {
   set(params: SetReferrer): ReturnType<typeof setReferrer>;
@@ -166,12 +159,19 @@ export interface INativeAccount {
   historicalOrders(): ReturnType<typeof getHistoricalOrders>;
 }
 
-/** Ordres avancés HL : batch (place/cancel/modify), annulation par client id, query, fills par période. */
-export interface IAdvancedOrders {
+/**
+ * Surplus **ordres** HL, porté par le scope marché (`perp()`/`spot()`) : batch
+ * (place/cancel/edit), annulation par client id, lecture d'un ordre, fills par période, TWAP.
+ * Verbes alignés inter-SDK (`placeBatch`/`cancelMany`/`editBatch`/`getById`/`getFills`/`placeTwap`…).
+ */
+export interface INativeOrders {
   placeBatch(orders: PlaceBatch): ReturnType<typeof placeOrders>;
   cancelMany(params: CancelMany): ReturnType<typeof cancelOrders>;
   cancelManyByClientId(params: CancelManyByClientId): ReturnType<typeof cancelOrdersByCloid>;
-  modifyBatch(params: ModifyBatch): ReturnType<typeof batchModifyOrders>;
-  query(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
-  fillsByTime(params: Args<typeof getUserFillsByTime>): ReturnType<typeof getUserFillsByTime>;
+  editBatch(params: ModifyBatch): ReturnType<typeof batchModifyOrders>;
+  getById(params: Args<typeof getOrderStatus>): ReturnType<typeof getOrderStatus>;
+  getFills(params: Args<typeof getUserFillsByTime>): ReturnType<typeof getUserFillsByTime>;
+  placeTwap(params: TwapOrder): ReturnType<typeof twapOrder>;
+  cancelTwap(params: TwapCancel): ReturnType<typeof twapCancel>;
+  getTwapFills(): ReturnType<typeof getUserTwapSliceFills>;
 }
