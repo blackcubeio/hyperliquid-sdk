@@ -1,6 +1,5 @@
 import type { HyperliquidClient } from '../common/config';
 import type { EditOrderParams, EditOrderResult } from '../common/types';
-import type { MarketKind, Side } from '../common/types';
 import { assetIndex } from '../common/utils';
 import { exchangeL1Action } from './client';
 import { buildModifyAction } from './exchange/modify-order';

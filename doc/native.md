@@ -20,10 +20,10 @@ signées (un signer est requis).
 | Méthode | Entrée | Sortie |
 |---|---|---|
 | `allMids(dex?)` | `string?` | `Promise<AllMids>` (map `coin → mid`) |
-| `candleSnapshot(p)` | `{ coin; interval; startTime; endTime?; kind? }` | `Promise<Candle[]>` |
+| `candleSnapshot(p)` | `CandleSnapshotQuery` | `Promise<Candle[]>` |
 | `metaAndAssetCtxs()` | — | `Promise<[Meta, AssetCtx[]]>` (perp) |
 | `metaAndAssetCtxsSpot()` | — | `Promise<[SpotMeta, SpotAssetCtx[]]>` |
-| `frontendOpenOrders(p)` | `{ user: 0x; dex? }` | `Promise<FrontendOrder[]>` |
+| `frontendOpenOrders(p)` | `FrontendOpenOrdersQuery` | `Promise<FrontendOrder[]>` |
 
 ```ts
 await dex.native.marketData().allMids();
@@ -36,12 +36,12 @@ await dex.native.marketData().frontendOpenOrders({ user: '0x…' });
 ## `native.advancedOrders()` — `IAdvancedOrders` (batch / cloid / query / fills)
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `placeBatch(orders)` | `OrderParams[]` | `Promise<unknown>` (statuses) |
-| `cancelMany(cancels)` | `CancelParams[]` | `Promise<unknown>` |
-| `cancelManyByClientId(cancels)` | `CancelByCloidParams[]` | `Promise<unknown>` |
-| `modifyBatch(modifies)` | `ModifyParams[]` | `Promise<unknown>` |
-| `query(p)` | `{ user: 0x; oid: number \| 0x }` | `Promise<OrderStatusResponse>` |
-| `fillsByTime(p)` | `{ user: 0x; startTime; endTime?; aggregateByTime? }` | `Promise<UserFill[]>` |
+| `placeBatch(orders)` | `PlaceBatchInput` | `Promise<unknown>` (statuses) |
+| `cancelMany(cancels)` | `CancelManyInput` | `Promise<unknown>` |
+| `cancelManyByClientId(cancels)` | `CancelManyByClientIdInput` | `Promise<unknown>` |
+| `modifyBatch(modifies)` | `ModifyBatchInput` | `Promise<unknown>` |
+| `query(p)` | `OrderStatusQuery` | `Promise<OrderStatusResponse>` |
+| `fillsByTime(p)` | `FillsByTimeQuery` | `Promise<UserFill[]>` |
 
 ```ts
 const res = await dex.native.advancedOrders().placeBatch([{ asset: 0, isBuy: true, price: '50000', size: '0.001', tif: 'Alo' }]);
@@ -56,7 +56,7 @@ await dex.native.advancedOrders().fillsByTime({ user: '0x…', startTime: Date.n
 ## `native.agents()` — `IAgents` (API wallets / agents)
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `approve(p)` | `ApproveAgentParams` | `Promise<unknown>` |
+| `approve(p)` | `ApproveAgentInput` | `Promise<unknown>` |
 
 ```ts
 await dex.native.agents().approve({ agentAddress: '0x…', agentName: 'bot' });
@@ -65,9 +65,9 @@ await dex.native.agents().approve({ agentAddress: '0x…', agentName: 'bot' });
 ## `native.transfers()` — `ITransfers` (USDC perp / bascule perp↔spot / token spot)
 | Méthode | Entrée | Sortie |
 |---|---|---|
-| `usdSend(p)` | `UsdSendParams` | `Promise<unknown>` |
-| `usdClassTransfer(p)` | `UsdClassTransferParams` | `Promise<unknown>` |
-| `spotSend(p)` | `SpotSendParams` | `Promise<unknown>` |
+| `usdSend(p)` | `UsdSendInput` | `Promise<unknown>` |
+| `usdClassTransfer(p)` | `UsdClassTransferInput` | `Promise<unknown>` |
+| `spotSend(p)` | `SpotSendInput` | `Promise<unknown>` |
 
 ```ts
 await dex.native.transfers().usdSend({ destination: '0x…', amount: '10' });
