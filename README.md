@@ -29,7 +29,7 @@ const dex = new Hyperliquid(
 
 // REST : requête → réponse
 const candles = await dex.perp().getCandles({ name: 'BTC', interval: '1m', limit: 100 });
-const order = await dex.perp().placeOrder({
+const order = await dex.perp().place({
   name: 'BTC', side: 'buy', type: 'limit', size: '0.001', price: '20000',
 });
 
@@ -81,8 +81,8 @@ en déduit le `kind`, et le **scope** (`perp()` vs `spot()`) le confirme et l'an
 | Catégorie | Méthodes |
 |---|---|
 | Marché (public) | `getPairs()`, `getCandles(q)`, `getOrderBook(q)`, `getPrices()`, `getFundingHistory(q)`, `getExchangeInfo()` |
-| Compte du produit (signé) | `getPositions(q?)`, `getOpenOrders(q?)`, `getUserTrades(q?)`, `getAccountInfo()` |
-| Trading (signé) | `placeOrder(i)`, `cancelOrder(i)`, `cancelAllOrders(i)`, `editOrder(i)`, `updateLeverage(i)`, `setMarginMode(i)`, `addIsolatedMargin(i)`, `removeIsolatedMargin(i)` |
+| Compte du produit (signé) | `getPositions(q?)`, `getOpens(q?)`, `getUserTrades(q?)`, `getAccountInfo()` |
+| Trading (signé) | `place(i)`, `cancel(i)`, `cancelAll(i)`, `edit(i)`, `updateLeverage(i)`, `setMarginMode(i)`, `addIsolatedMargin(i)`, `removeIsolatedMargin(i)` |
 
 > **Spécificités Hyperliquid** (la surface unifiée n'expose que ce qui existe) :
 > - pas de **trades publics REST** (`getTrades`) ni d'**historique d'ordres** (`getOrderHistory`) ;
@@ -131,10 +131,10 @@ const pub = new Hyperliquid();
 const book = await pub.perp().getOrderBook({ name: 'BTC' });
 
 // Cycle d'ordre (testnet)
-const created = await dex.perp().placeOrder({
+const created = await dex.perp().place({
   name: 'BTC', side: 'buy', type: 'limit', tif: 'alo', size: '0.001', price: '20000',
 });
-await dex.perp().cancelOrder({ name: 'BTC', id: created.id });
+await dex.perp().cancel({ name: 'BTC', id: created.id });
 
 // Compte transverse
 const balances = await dex.account().getBalances();
