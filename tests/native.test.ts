@@ -6,9 +6,18 @@ const dex = new Hyperliquid();
 
 describe('Hyperliquid — namespace native (mainnet réel, public)', () => {
   it('expose les capacités attendues', () => {
-    for (const c of ['agents', 'transfers', 'marketData', 'advancedOrders']) {
+    for (const c of ['agents', 'transfers', 'marketData', 'advancedOrders', 'account']) {
       expect(typeof (dex.native as Record<string, unknown>)[c]).toBe('function');
     }
+  });
+
+  it('native.marketData() — predictedFundings() + perpDexs()', async () => {
+    const [pf, dexs] = await Promise.all([
+      dex.native.marketData().predictedFundings(),
+      dex.native.marketData().perpDexs(),
+    ]);
+    expect(pf).toBeDefined();
+    expect(dexs).toBeDefined();
   });
 
   it('native.marketData().allMids()', async () => {

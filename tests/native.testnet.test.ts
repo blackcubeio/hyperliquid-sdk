@@ -25,6 +25,22 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     { default: 'trader' },
   );
 
+  it('native.account() : lectures par adresse (fees/role/rateLimit/portfolio/historicalOrders)', async () => {
+    const acc = dex.native.account();
+    const [fees, role, rateLimit, portfolio, hist] = await Promise.all([
+      acc.fees(),
+      acc.role(),
+      acc.rateLimit(),
+      acc.portfolio(),
+      acc.historicalOrders(),
+    ]);
+    expect(fees).toBeDefined();
+    expect(role).toBeDefined();
+    expect(rateLimit).toBeDefined();
+    expect(portfolio).toBeDefined();
+    expect(Array.isArray(hist)).toBe(true);
+  });
+
   it('native.advancedOrders() : placeBatch → query → cancelMany', async () => {
     // Index d'actif BTC (perp) via la meta native.
     const [meta] = (await dex.native.marketData().metaAndAssetCtxs()) as [
@@ -38,9 +54,11 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     const mark = Number(prices.find((p) => p.name === 'BTC')?.mid ?? '0');
     const price = String(Math.max(1, Math.round(mark * 0.5)));
 
-    const res = (await dex.native.advancedOrders().placeBatch([
-      { asset, isBuy: true, price, size: '0.001', tif: 'Alo' },
-    ])) as { response?: { data?: { statuses?: Array<{ resting?: { oid: number } }> } } };
+    const res = (await dex.native
+      .advancedOrders()
+      .placeBatch([{ asset, isBuy: true, price, size: '0.001', tif: 'Alo' }])) as {
+      response?: { data?: { statuses?: Array<{ resting?: { oid: number } }> } };
+    };
     const oid = res.response?.data?.statuses?.[0]?.resting?.oid;
     console.log('placeBatch resting oid:', oid);
     expect(typeof oid).toBe('number');
