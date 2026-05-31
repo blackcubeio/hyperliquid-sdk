@@ -86,6 +86,25 @@ describe.skipIf(!ready)('Hyperliquid native — capacités signées (testnet ré
     console.log('transfert sous-compte aller-retour OK sur', sub);
   }, 30_000);
 
+  it('native.vaults() : equities() réel + chemin signé transfer (sans dépôt réel)', async () => {
+    const eq = await dex.native.vaults().equities();
+    expect(eq).toBeDefined();
+    // Chemin signé : un dépôt vault vers une adresse non-vault → rejet métier (signature acceptée).
+    // create/modify/distribute (lockup 100 USD / possession requise) sont testés manuellement.
+    try {
+      const res = await dex.native
+        .vaults()
+        .transfer({ vaultAddress: account as `0x${string}`, isDeposit: true, usd: '1' });
+      expect(res).toBeDefined();
+      console.log('vault transfer accepté');
+    } catch (e) {
+      const msg = String((e as Error).message);
+      console.log('vault transfer rejet métier (signature acceptée):', msg);
+      // Vault cible inexistant = rejet métier ; on exclut seulement une vraie erreur de signature.
+      expect(msg).not.toMatch(/invalid signature|must deserialize|failed to deserialize/i);
+    }
+  }, 30_000);
+
   it('native.staking() : lectures réelles + chemin signé withdraw (sans lockup)', async () => {
     const st = dex.native.staking();
     const [del, sum, hist, rew] = await Promise.all([
