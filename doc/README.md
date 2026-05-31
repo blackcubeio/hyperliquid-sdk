@@ -7,6 +7,8 @@ complète (scopes `perp`/`spot`/`account`/`system`/`helpers`/`ws`, REST vs WebSo
 ## Sommaire
 
 - [README](../README.md) — la classe `Hyperliquid`, les scopes, REST vs WebSocket, exemples.
+- [Surface commune](./common.md) — le **contrat unifié** (identique sur les 4 SDK Blackcube).
+- [Surface native](./native.md) — les capacités **spécifiques à Hyperliquid** (`dex.native.<cap>()`).
 - [Signing](./signing.md) — schémas de signature (EIP-712 L1 + user-signed, msgpack), signers
   par label, réseau par signer, API/agent wallets.
 
