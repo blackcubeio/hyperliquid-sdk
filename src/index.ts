@@ -2,7 +2,13 @@
 // Point d'entrée unique : la classe `Hyperliquid`. Tout le reste (fonctions REST, clients WS
 // bruts, signing, types natifs) est interne et n'est pas exporté.
 
-/** Façade : `new Hyperliquid(signers, { default })` puis `.perp()/.spot()/.account()/.system()/.helpers()/.ws()`. */
+/**
+ * Façade : `new Hyperliquid(signers, { default })` puis les scopes **réels** de la classe :
+ * `.perp()` / `.spot()` (marché + trading + compte du produit), `.account()` (compte transverse),
+ * `.transfers()` (transferts de fonds), `.helpers()` (crypto EVM), `.ws()` / `.wsSpot()` (temps réel)
+ * et le namespace `.native.<capacité>()` (surplus spécifique HL). **Pas** de `.system()` (HL n'expose
+ * ni ping ni horloge serveur publics).
+ */
 export { Hyperliquid, type HyperliquidDexOptions } from './dex/hyperliquid';
 
 /** Contrat : interfaces de capacités + types d'entrée (Input) des méthodes. */

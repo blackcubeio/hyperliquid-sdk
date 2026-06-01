@@ -56,9 +56,10 @@ await dex.perp().getExchangeInfo();
 ```
 
 ### Trades publics — `IPublicTrades`
-| `getTrades(q)` | `TradesParams` | `Promise<Trade[]>` |
+| `getTrades(q)` | `TradesParams` | `Promise<Trade[]>` *(absent : HL ; Hyperliquid n'a pas de trades publics REST)* |
 
 ```ts
+// Aster / Pacifica uniquement — Hyperliquid n'implémente PAS IPublicTrades.
 await dex.perp().getTrades({ name: 'BTC', limit: 50 });
 ```
 
