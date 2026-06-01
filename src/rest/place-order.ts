@@ -1,11 +1,10 @@
 import type { HyperliquidClient } from '../common/config';
-import type { PlaceOrderParams, PlaceOrderTif } from '../common/types';
+import type { MarketKind, PlaceOrderParams, PlaceOrderTif } from '../common/types';
 import type { Order } from '../common/types';
 import type { Tif } from '../common/types';
-import { assetIndex } from '../common/utils';
 import { exchangeL1Action } from './client';
 import { buildOrderAction } from './exchange/place-order';
-import { getMeta } from './info/get-meta';
+import { resolveAsset } from './info/resolve-asset';
 
 const TIF: Record<PlaceOrderTif, Tif> = { gtc: 'Gtc', ioc: 'Ioc', fok: 'Ioc', alo: 'Alo' };
 
@@ -24,8 +23,8 @@ export function placeOrder(
   label: string,
 ): Promise<Order> {
   const tif: Tif = params.type === 'market' ? 'Ioc' : TIF[params.tif ?? 'gtc'];
-  return getMeta(client, undefined, label).then((meta) => {
-    const asset = assetIndex(meta.universe, params.name);
+  const kind: MarketKind = params.kind ?? 'perp';
+  return resolveAsset(client, params.name, kind, label).then((asset) => {
     return exchangeL1Action<OrderResponse>(
       client,
       buildOrderAction([
@@ -45,7 +44,7 @@ export function placeOrder(
       const oid = status?.resting?.oid ?? status?.filled?.oid;
       return {
         name: params.name,
-        kind: 'perp',
+        kind,
         id: oid === undefined ? '' : String(oid),
         clientId: params.clientId ?? null,
         side: params.side,

@@ -30,17 +30,24 @@ export class UserTradeConverter {
   }
 
   toNative(trade: UserTrade): UserTradeNative {
+    // `xtras` porte les champs natifs omis du cœur (`side`/`startPosition`/`dir`/`hash`/`crossed`) :
+    // on les restitue explicitement (pas de double cast — la forme native est typée).
+    const xtras = (trade.xtras ?? {}) as Partial<UserTradeNative>;
     return {
       coin: trade.name,
       px: trade.price,
       sz: trade.size,
+      side: xtras.side ?? (trade.side === 'buy' ? 'B' : 'A'),
       time: trade.time,
-      closedPnl: trade.pnl as string,
+      startPosition: xtras.startPosition ?? '0',
+      dir: xtras.dir ?? '',
+      closedPnl: trade.pnl ?? '0',
+      hash: xtras.hash ?? '',
       oid: Number(trade.orderId),
+      crossed: xtras.crossed ?? trade.maker === false,
       fee: trade.fee,
       tid: Number(trade.id),
-      feeToken: trade.feeAsset as string,
-      ...trade.xtras,
-    } as unknown as UserTradeNative;
+      feeToken: trade.feeAsset ?? '',
+    };
   }
 }

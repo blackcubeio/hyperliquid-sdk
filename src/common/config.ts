@@ -71,5 +71,8 @@ function defaultWebSocketFactory(): WebSocketFactory | undefined {
   if (typeof globalThis.WebSocket !== 'function') {
     return undefined;
   }
+  // Cast strictement nécessaire : le `WebSocket` du DOM/Node n'expose pas exactement notre
+  // `WebSocketLike` (events typés différemment) mais en est un sur-ensemble compatible au runtime
+  // (send/close/onopen/onmessage/onerror/onclose). Pont structurel volontaire, pas de dérive métier.
   return (url) => new globalThis.WebSocket(url) as unknown as WebSocketLike;
 }

@@ -26,16 +26,27 @@ export class PairConverter {
   }
 
   toNative(pair: Pair): AssetMeta | SpotPair {
+    // `xtras` porte les champs natifs omis du cœur : on les restitue explicitement (pas de
+    // double cast — les formes natives `SpotPair`/`AssetMeta` sont typées).
     if (pair.kind === 'spot') {
-      return { name: pair.name, kind: pair.kind, ...pair.xtras } as unknown as SpotPair;
+      const xtras = (pair.xtras ?? {}) as Partial<SpotPair>;
+      return {
+        name: pair.name,
+        tokens: xtras.tokens ?? [0, 0],
+        index: xtras.index ?? 0,
+        isCanonical: xtras.isCanonical ?? false,
+        kind: pair.kind,
+      };
     }
+    const xtras = (pair.xtras ?? {}) as Partial<AssetMeta>;
     return {
       name: pair.name,
       szDecimals: pair.szDecimals,
-      maxLeverage: pair.maxLeverage,
+      maxLeverage: pair.maxLeverage ?? 0,
+      onlyIsolated: xtras.onlyIsolated,
+      isDelisted: xtras.isDelisted,
       kind: pair.kind,
-      ...pair.xtras,
-    } as unknown as AssetMeta;
+    };
   }
 
   private perpToCommon(asset: AssetMeta): Pair {

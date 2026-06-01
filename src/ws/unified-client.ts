@@ -27,6 +27,10 @@ import { WsClient } from './client';
  * dès que le dernier abonnement est retiré (ref-counting). Le développeur ne gère que
  * `subscribeX(…) → unsubscribe()`. Converters WS **unidirectionnels** (lecture seule) : quand le
  * payload WS coïncide avec le natif REST (bougies, fills HL), le convertisseur REST est réutilisé.
+ *
+ * Les casts `raw as unknown as XNative` ci-dessous sont **strictement nécessaires** : le handler WS
+ * natif délivre un `JsonValue` (forme de wire non typée, le serveur ne contractualise pas le shape),
+ * qui n'a aucun chevauchement structurel avec les types natifs ; le convertisseur valide ensuite.
  */
 export class UnifiedWsClient {
   private readonly client: HyperliquidClient;
