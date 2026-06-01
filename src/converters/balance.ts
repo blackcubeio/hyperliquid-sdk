@@ -22,10 +22,15 @@ export class BalanceConverter {
   }
 
   toNative(balance: Balance): BalanceNative {
+    // `xtras` porte les champs spot natifs omis du cœur (`token`/`hold`/`entryNtl`) : on les
+    // restitue explicitement (pas de double cast — la forme native est typée).
+    const xtras = (balance.xtras ?? {}) as Partial<Omit<BalanceNative, 'coin' | 'total'>>;
     return {
       coin: balance.asset,
       total: balance.total,
-      ...balance.xtras,
-    } as unknown as BalanceNative;
+      token: xtras.token ?? 0,
+      hold: xtras.hold ?? '0',
+      entryNtl: xtras.entryNtl ?? '0',
+    };
   }
 }

@@ -1,9 +1,8 @@
 import type { HyperliquidClient } from '../common/config';
 import type { EditOrderParams, EditOrderResult } from '../common/types';
-import { assetIndex } from '../common/utils';
 import { exchangeL1Action } from './client';
 import { buildModifyAction } from './exchange/modify-order';
-import { getMeta } from './info/get-meta';
+import { resolveAsset } from './info/resolve-asset';
 
 /** Modifie un ordre existant (**écriture signée**, HL `/exchange` — remplace l'ordre). */
 export function editOrder(
@@ -11,8 +10,7 @@ export function editOrder(
   params: EditOrderParams,
   label: string,
 ): Promise<EditOrderResult> {
-  return getMeta(client, undefined, label).then((meta) => {
-    const asset = assetIndex(meta.universe, params.name);
+  return resolveAsset(client, params.name, params.kind ?? 'perp', label).then((asset) => {
     return exchangeL1Action(
       client,
       buildModifyAction({

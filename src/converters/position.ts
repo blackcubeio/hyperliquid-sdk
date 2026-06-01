@@ -28,13 +28,21 @@ export class PositionConverter {
   }
 
   toNative(position: Position): PositionNative {
+    // `xtras` porte les champs natifs omis du cœur (`szi`, `positionValue`, `leverage`…) :
+    // on les restitue explicitement (pas de double cast — la forme native est typée).
+    const xtras = (position.xtras ?? {}) as Partial<PositionNative>;
     return {
       coin: position.name,
+      szi: xtras.szi ?? '0',
       entryPx: position.entryPrice ?? undefined,
-      unrealizedPnl: position.unrealizedPnl as string,
+      positionValue: xtras.positionValue ?? '0',
+      unrealizedPnl: position.unrealizedPnl ?? '0',
+      returnOnEquity: xtras.returnOnEquity ?? '0',
+      leverage: xtras.leverage ?? { type: 'cross', value: 1 },
       liquidationPx: position.liquidationPrice,
-      marginUsed: position.margin as string,
-      ...position.xtras,
-    } as unknown as PositionNative;
+      marginUsed: position.margin ?? '0',
+      maxLeverage: xtras.maxLeverage ?? 1,
+      cumFunding: xtras.cumFunding ?? { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+    };
   }
 }

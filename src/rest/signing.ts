@@ -136,11 +136,12 @@ function hashTypedData(
   primaryType: string,
   message: Record<string, unknown>,
 ): Uint8Array {
-  const domainSeparator = hashStruct(
-    'EIP712Domain',
-    DOMAIN_TYPE,
-    domain as unknown as Record<string, unknown>,
-  );
+  // Cast nécessaire : `Eip712Domain` (interface à clés fixes) n'a pas d'index signature, donc
+  // n'est pas directement assignable à `Record<string, unknown>` attendu par `hashStruct`. Les
+  // champs sont garantis présents (forme EIP-712 fixe) ; aucun risque de dérive de shape.
+  const domainSeparator = hashStruct('EIP712Domain', DOMAIN_TYPE, {
+    ...domain,
+  } as Record<string, unknown>);
   const structHash = hashStruct(primaryType, types, message);
   return keccak_256(concatBytes(new Uint8Array([0x19, 0x01]), domainSeparator, structHash));
 }

@@ -18,7 +18,7 @@ the official Python SDK and the `nktkas` TS SDK vectors). Signing is **internal*
 
 Standard EIP-712 typed data: domain `HyperliquidSignTransaction`, `chainId` from the action's
 `signatureChainId` (`0x66eee`), `hyperliquidChain` = `Mainnet`/`Testnet`. Each action carries its
-own types. Exposées via les scopes `dex.transfers(...)` / `dex.agent(...)`.
+own types. Exposées via les scopes `dex.transfers(...)` / `dex.native.agents(...)`.
 
 ## Signers, labels & networks
 
@@ -53,7 +53,7 @@ Règles lecture / écriture, internes à la façade :
 - **Écritures** (`placeOrder`, `withdraw`, `updateLeverage`…) — un signer (label, ou défaut) est
   **obligatoire** ; il fixe le wallet **et** le réseau (`source` L1 `a`/`b`, `hyperliquidChain`).
 
-> **API / agent wallets.** A master account can approve API wallets (`dex.agent().approveAgent`) to
+> **API / agent wallets.** A master account can approve API wallets (`dex.native.agents().approve`) to
 > sign on its behalf. The API wallet only **signs** — to read account data you must pass the
 > **master/sub address** as `publicKey` (querying the agent address returns empty).
 

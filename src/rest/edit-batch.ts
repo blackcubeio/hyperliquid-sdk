@@ -1,9 +1,8 @@
 import type { HyperliquidClient } from '../common/config';
-import type { Order, Tif } from '../common/types';
-import { assetIndex } from '../common/utils';
+import type { MarketKind, Order, Tif } from '../common/types';
 import { exchangeL1Action } from './client';
 import { buildBatchModifyAction } from './exchange/modify-order';
-import { getMeta } from './info/get-meta';
+import { resolveAsset } from './info/resolve-asset';
 
 /** Leg de modification d'un lot, au **vocabulaire commun** (remplace l'ordre `id`). */
 export interface EditBatchLeg {
@@ -11,6 +10,8 @@ export interface EditBatchLeg {
   id: string;
   /** Paire/symbole (= `Pair.name`). */
   name: string;
+  /** Type de marché du leg ; défaut `perp`. Détermine la résolution d'asset (perp vs spot +10000). */
+  kind?: MarketKind;
   /** Sens (HL remplace l'ordre entier). */
   side: 'buy' | 'sell';
   /** Nouvelle quantité (chaîne décimale). */
@@ -47,11 +48,13 @@ export function editBatchOrders(
   legs: EditBatchLeg[],
   label: string,
 ): Promise<Order[]> {
-  return getMeta(client, undefined, label).then((meta) => {
-    const modifies = legs.map((leg) => ({
+  return Promise.all(
+    legs.map((leg) => resolveAsset(client, leg.name, leg.kind ?? 'perp', label)),
+  ).then((assets) => {
+    const modifies = legs.map((leg, i) => ({
       oid: Number(leg.id),
       order: {
-        asset: assetIndex(meta.universe, leg.name),
+        asset: assets[i] as number,
         isBuy: leg.side === 'buy',
         price: leg.price,
         size: leg.size,
@@ -68,7 +71,7 @@ export function editBatchOrders(
           const oid = status?.resting?.oid ?? status?.filled?.oid;
           return {
             name: leg.name,
-            kind: 'perp' as const,
+            kind: leg.kind ?? ('perp' as const),
             id: oid === undefined ? leg.id : String(oid),
             clientId: leg.clientId ?? null,
             side: leg.side,

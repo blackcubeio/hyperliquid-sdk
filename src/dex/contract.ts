@@ -12,6 +12,7 @@ import type {
   UserTrade,
 } from '../common/types';
 import type { Unsubscribe } from '../common/ws';
+import type { Ack } from '../converters/ack';
 
 /**
  * Contrat **commun aux 3 DEX** (Aster / Hyperliquid / Pacifica). Décomposé en interfaces par
@@ -109,6 +110,11 @@ export interface IMarketData {
 
 /** Métadonnées de marché du produit (infos d'échange, symboles…). */
 export interface IMarketMeta {
+  /**
+   * Brut volontaire — **pas de forme commune cross-DEX** : chaque venue renvoie une structure de
+   * métadonnées d'échange différente (univers HL `meta`/`spotMeta`, exchangeInfo Aster…). Passe-plat
+   * non normalisé (le natif est documenté par DEX). Le `unknown` ici est **assumé**, pas un oubli.
+   */
   getExchangeInfo(): Promise<unknown>;
 }
 
@@ -122,6 +128,11 @@ export interface ITrading {
   place(input: PlaceOrderParams): Promise<Order>;
   cancel(input: CancelOrderParams): Promise<void>;
   cancelAll(input: CancelAllParams): Promise<{ cancelled: number | null }>;
+  /**
+   * Modifie un ordre. Contrainte DEX : `edit` ne renvoie que **l'identité du nouvel ordre**
+   * (`{ name, id }`), **pas** un snapshot complet comme `place()` → `Order`. La modification
+   * remplace l'ordre côté venue ; l'état complet doit être relu (`getOpens`/`getById`).
+   */
   edit(input: EditOrderParams): Promise<{ name: string; id: string }>;
   updateLeverage(input: LeverageParams): Promise<unknown>;
 }
@@ -148,6 +159,11 @@ export interface IProductAccount {
   getPositions(query?: SymbolParams): Promise<Position[]>;
   getOpens(query?: SymbolParams): Promise<Order[]>;
   getUserTrades(query?: SymbolParams): Promise<UserTrade[]>;
+  /**
+   * Brut volontaire — **pas de forme commune cross-DEX** : l'état de compte (clearinghouse HL,
+   * account Aster…) diffère par venue. Passe-plat non normalisé (le natif est documenté par DEX).
+   * Le `unknown` ici est **assumé**, pas un oubli.
+   */
   getAccountInfo(): Promise<unknown>;
 }
 
@@ -161,7 +177,11 @@ export interface IOrderHistory {
 /** Compte transverse (sans notion de produit) : soldes + retrait (les 3 DEX). */
 export interface IAccount {
   getBalances(): Promise<Balance[]>;
-  withdraw(input: WithdrawParams): Promise<unknown>;
+  /**
+   * Retrait. Renvoie un {@link Ack} commun (`ok` + `xtras` = réponse native complète, rien jeté) :
+   * le contrat commun n'est **pas** plus laxiste que le natif (qui n'a plus d'`unknown`).
+   */
+  withdraw(input: WithdrawParams): Promise<Ack>;
 }
 
 /** Liste des sous-comptes (Aster, Pacifica — pas HL). */

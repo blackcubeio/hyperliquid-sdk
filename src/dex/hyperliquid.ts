@@ -449,8 +449,12 @@ class HyperliquidAccount implements IAccount, IDeadManSwitch {
   public getBalances(): Promise<Balance[]> {
     return getBalances(this.client, { user: this.user() }, this.signed());
   }
-  public withdraw(input: WithdrawParams): Promise<unknown> {
-    return withdraw(this.client, { amount: input.amount, address: input.address }, this.signed());
+  public withdraw(input: WithdrawParams): Promise<Ack> {
+    return withdraw<AckNative>(
+      this.client,
+      { amount: input.amount, address: input.address },
+      this.signed(),
+    ).then((r) => ack.toCommon(r));
   }
 
   // ── IDeadManSwitch (HL : scheduleCancel, échéance = timestamp absolu ms) ──

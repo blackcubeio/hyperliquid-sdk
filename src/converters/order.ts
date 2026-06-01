@@ -33,14 +33,19 @@ export class OrderConverter {
   }
 
   toNative(order: Order): OrderNative {
+    // `xtras` porte les champs natifs omis du cœur (`side`/`sz`/`origSz`) : on les restitue
+    // explicitement (pas de double cast — la forme native est typée).
+    const xtras = (order.xtras ?? {}) as Partial<OrderNative>;
     return {
       coin: order.name,
-      limitPx: order.price as string,
+      limitPx: order.price ?? '0',
       oid: Number(order.id),
+      side: xtras.side ?? (order.side === 'buy' ? 'B' : 'A'),
+      sz: xtras.sz ?? order.size,
       timestamp: order.time,
+      origSz: xtras.origSz,
       cloid: order.clientId ?? undefined,
-      ...order.xtras,
-    } as unknown as OrderNative;
+    };
   }
 }
 
