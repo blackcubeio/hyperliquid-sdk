@@ -23,6 +23,9 @@ import { buildOrderAction } from '../rest/exchange/place-order';
 import { signL1Action } from '../rest/signing';
 import { SubscriptionBatcher } from './subscription-batcher';
 
+/** `WebSocket.OPEN` (readyState) — la frame n'est émise que dans cet état. */
+const OPEN = 1;
+
 interface PendingPost {
   resolve: (value: JsonValue) => void;
   reject: (reason: unknown) => void;
@@ -313,9 +316,16 @@ export class WsClient {
     this.pendingPosts.clear();
   }
 
-  /** Émission immédiate sur la socket si ouverte, sinon mise en file (rejouée à `onopen`). */
+  /**
+   * Émission immédiate sur la socket si elle est réellement **OPEN**, sinon mise en file (rejouée à `onopen`).
+   * Le seul `this.open` ne suffit pas : il peut être en avance sur l'état réel (reconnexion → `this.socket`
+   * réassigné à une socket CONNECTING avant `onopen`, ou frame différée par le throttle du batcher arrivant
+   * pendant un close concurrent). `send()` lèverait alors « Sent before connected » — throw non rattrapé qui
+   * crashe le process. On vérifie donc `readyState === OPEN` ; les frames filées repartent au prochain `onopen`
+   * (abonnements vivants rejoués via `afterReconnect`/`resubscribe`).
+   */
   private rawSend(serialized: string): void {
-    if (this.socket === null || this.open === false) {
+    if (this.open === false || this.socket === null || this.socket.readyState !== OPEN) {
       this.pending.push(serialized);
       return;
     }

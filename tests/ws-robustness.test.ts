@@ -86,4 +86,41 @@ describe('WsClient robustesse (mainnet réel, public)', () => {
     await new Promise((r) => setTimeout(r, 2_000));
     expect(sockets.length).toBe(countAfterConnect); // aucune nouvelle socket
   }, 15_000);
+
+  it('ne throw pas (« Sent before connected ») si un subscribe survient pendant que la socket est CONNECTING', async () => {
+    // Reproduit l'état fautif : `connect()` rappelé alors qu'une socket est déjà ouverte réassigne
+    // `this.socket` à une NOUVELLE socket CONNECTING sans qu'un onclose repasse `open` à false. AVANT le fix,
+    // rawSend (qui ne testait que `this.open`) appelait `send()` sur la socket CONNECTING → DOMException
+    // « Sent before connected », throw non rattrapé dans un microtask → crash du process.
+    sockets.length = 0;
+    const leaks: unknown[] = [];
+    const onLeak = (error: unknown): void => {
+      leaks.push(error);
+    };
+    process.on('uncaughtException', onLeak);
+    process.on('unhandledRejection', onLeak);
+    const ws = new WsClient(client);
+    let messages = 0;
+    ws.subscribeAllMids(() => {
+      messages += 1;
+    });
+    try {
+      await ws.connect(); // socket[0] OPEN, open=true
+      void ws.connect(); // socket[1] CONNECTING, this.socket réassigné, open reste true
+      expect(sockets.length).toBe(2);
+      expect(sockets[1]?.readyState).toBe(0); // CONNECTING
+      // Force flush → pump → rawSend sur socket[1] CONNECTING.
+      ws.subscribeL2Book({ coin: 'BTC' }, () => {
+        messages += 1;
+      });
+      await new Promise((r) => setTimeout(r, 10_000));
+      expect(leaks).toEqual([]); // aucune exception n'a fui (le crash d'origine)
+      expect(messages).toBeGreaterThan(0); // client resté fonctionnel
+    } finally {
+      ws.disconnect();
+      sockets[0]?.close(); // socket[0] écrasée par le 2ᵉ connect : on la ferme.
+      process.off('uncaughtException', onLeak);
+      process.off('unhandledRejection', onLeak);
+    }
+  }, 30_000);
 });
