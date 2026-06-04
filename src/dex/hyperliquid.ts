@@ -149,7 +149,6 @@ import type {
   IMarketMeta,
   IProductAccount,
   IRealtime,
-  IRealtimeAllCandles,
   IRemovableMargin,
   ITrading,
   ITransfers,
@@ -488,7 +487,7 @@ class HyperliquidHelpers implements KeyHelper, EvmHelper {
  * de flux de positions dédié → pas de `IRealtimePositions`. Les flux user-data (`subscribeOrders`,
  * `subscribeUserTrades`) requièrent l'adresse du compte, résolue depuis le signer.
  */
-class HyperliquidRealtime implements IRealtime, IRealtimeAllCandles {
+class HyperliquidRealtime implements IRealtime {
   constructor(
     private readonly ws: UnifiedWsClient,
     private readonly kind: MarketKind,
