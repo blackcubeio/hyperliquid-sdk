@@ -61,6 +61,12 @@ export interface PlaceOrderParams {
   tif?: 'gtc' | 'ioc' | 'fok' | 'alo';
   reduceOnly?: boolean;
   clientId?: string;
+  /**
+   * Slippage max en % (ordres `market` sans `price`). HL n'a pas de market natif : c'est un IOC borné par un prix
+   * limite. Sans `price`, la borne est dérivée du mark courant ± `slippagePercent` (défaut `1`). → market uniforme
+   * avec les autres DEX, sans exiger de prix de l'appelant. Ignoré si `price` est fourni.
+   */
+  slippagePercent?: string;
 }
 export interface CancelOrderParams {
   name: string;

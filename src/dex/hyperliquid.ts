@@ -204,6 +204,18 @@ function intervalToMs(interval: string): number {
   return Number(match[1]) * (UNIT_MS[match[2] as string] ?? 60_000);
 }
 
+// Formate un prix aux règles HL : ≤5 chiffres significatifs ET ≤(MAX_DECIMALS - szDecimals) décimales, où
+// MAX_DECIMALS = 6 (perp) / 8 (spot). Les prix entiers sont toujours valides (cap de décimales ≤ 0 → arrondi entier).
+function formatBoundPrice(raw: number, szDecimals: number, kind: MarketKind): string {
+  const maxDecimals = (kind === 'spot' ? 8 : 6) - szDecimals;
+  const sig = Number(raw.toPrecision(5));
+  if (maxDecimals <= 0) {
+    return String(Math.round(sig));
+  }
+  const factor = 10 ** maxDecimals;
+  return String(Math.round(sig * factor) / factor);
+}
+
 /**
  * Scope **marché** (perp ou spot) lié à un `kind` et un `label`. Les params n'ont pas de
  * `kind` : il est porté par le scope (Hyperliquid le déduit aussi du nom du coin). Hyperliquid
@@ -322,17 +334,31 @@ class HyperliquidMarket
     if (input.type !== 'limit' && input.type !== 'market') {
       throw new Error(`place (Hyperliquid) : type "${input.type}" non supporté (limit/market).`);
     }
-    if (input.price === undefined) {
-      throw new Error('place (Hyperliquid) : `price` est requis (limite ou borne de slippage).');
+    if (input.price !== undefined) {
+      return this.submitOrder(input, input.price);
     }
+    if (input.type !== 'market') {
+      throw new Error('place (Hyperliquid) : `price` est requis (ordre limite).');
+    }
+    // HL n'a pas de market natif : c'est un IOC borné par un prix limite. Sans `price`, on dérive la borne du
+    // mark courant ± `slippagePercent` (défaut 1 %), formatée aux règles de prix HL → market uniforme avec les
+    // autres DEX (qui acceptent `slippagePercent`), sans exiger de prix de l'appelant.
+    return this.marketBoundPrice(input.name, input.side, input.slippagePercent).then((price) =>
+      this.submitOrder(input, price),
+    );
+  }
+
+  // Soumet l'ordre au format unifié avec un prix limite résolu (fourni, ou borne de slippage calculée pour market).
+  // `type` est garanti `limit`/`market` par le guard de `place()` (seul appelant) → narrow explicite pour le REST.
+  private submitOrder(input: PlaceOrderParams, price: string): Promise<Order> {
     return placeOrder(
       this.client,
       {
         name: input.name,
         side: input.side,
-        type: input.type,
+        type: input.type as 'limit' | 'market',
         size: input.size,
-        price: input.price,
+        price,
         tif: input.tif,
         reduceOnly: input.reduceOnly,
         clientId: input.clientId as Hex | undefined,
@@ -340,6 +366,27 @@ class HyperliquidMarket
       },
       this.signed(),
     );
+  }
+
+  // Borne de prix d'un ordre market = mark ± slippage, formatée aux règles de prix HL. getPrices (mark) + getPairs
+  // (szDecimals) couvrent perp ET spot. Le fill réel se fait au book (IOC) ; la borne ne fait que garantir le fill.
+  private marketBoundPrice(
+    name: string,
+    side: 'buy' | 'sell',
+    slippagePercent?: string,
+  ): Promise<string> {
+    const slip = Number(slippagePercent ?? '1') / 100;
+    return Promise.all([this.getPrices(), this.getPairs()]).then(([prices, pairs]) => {
+      const mark = Number(prices.find((p) => p.name === name)?.mark);
+      if (!Number.isFinite(mark) || mark <= 0) {
+        throw new Error(
+          `place (Hyperliquid) : mark indisponible pour ${name} (borne de slippage market).`,
+        );
+      }
+      const szDecimals = pairs.find((p) => p.name === name)?.szDecimals ?? 0;
+      const raw = side === 'buy' ? mark * (1 + slip) : mark * (1 - slip);
+      return formatBoundPrice(raw, szDecimals, this.kind);
+    });
   }
   public cancel(input: CancelOrderParams): Promise<void> {
     if (input.id === undefined) {
