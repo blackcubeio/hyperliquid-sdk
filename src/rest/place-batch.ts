@@ -58,6 +58,11 @@ export function placeBatchOrders(
         reduceOnly: o.reduceOnly,
         tif: o.type === 'market' ? ('Ioc' as Tif) : TIF[o.tif ?? 'gtc'],
         cloid: o.clientId as `0x${string}` | undefined,
+        triggerPx: o.triggerPrice,
+        isMarket: o.type === 'stopMarket' || o.type === 'takeProfitMarket',
+        tpsl: (o.type === 'takeProfit' || o.type === 'takeProfitMarket' ? 'tp' : 'sl') as
+          | 'tp'
+          | 'sl',
       }));
       return exchangeL1Action<BatchResponse>(client, buildOrderAction(legs), label).then((res) => {
         const statuses = res.response?.data?.statuses ?? [];
