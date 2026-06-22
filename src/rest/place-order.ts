@@ -24,6 +24,9 @@ export function placeOrder(
 ): Promise<Order> {
   const tif: Tif = params.type === 'market' ? 'Ioc' : TIF[params.tif ?? 'gtc'];
   const kind: MarketKind = params.kind ?? 'perp';
+  const isMarket = params.type === 'stopMarket' || params.type === 'takeProfitMarket';
+  const tpsl: 'tp' | 'sl' =
+    params.type === 'takeProfit' || params.type === 'takeProfitMarket' ? 'tp' : 'sl';
   return resolveAsset(client, params.name, kind, label).then((asset) => {
     return exchangeL1Action<OrderResponse>(
       client,
@@ -36,6 +39,9 @@ export function placeOrder(
           reduceOnly: params.reduceOnly,
           tif,
           cloid: params.clientId,
+          triggerPx: params.triggerPrice,
+          isMarket,
+          tpsl,
         },
       ]),
       label,

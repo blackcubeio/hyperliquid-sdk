@@ -331,14 +331,17 @@ class HyperliquidMarket
 
   // ── ITrading ──
   public place(input: PlaceOrderParams): Promise<Order> {
-    if (input.type !== 'limit' && input.type !== 'market') {
-      throw new Error(`place (Hyperliquid) : type "${input.type}" non supporté (limit/market).`);
-    }
     if (input.price !== undefined) {
       return this.submitOrder(input, input.price);
     }
-    if (input.type !== 'market') {
-      throw new Error('place (Hyperliquid) : `price` est requis (ordre limite).');
+    // Sans `price` : seul un market (plain ou déclenché) peut dériver sa borne du mark ± slippage. Un ordre
+    // limite ou déclenché-en-limite exige un `price` explicite.
+    const derivable =
+      input.type === 'market' || input.type === 'stopMarket' || input.type === 'takeProfitMarket';
+    if (derivable === false) {
+      throw new Error(
+        'place (Hyperliquid) : `price` est requis (ordre limite ou déclenché en limite).',
+      );
     }
     // HL n'a pas de market natif : c'est un IOC borné par un prix limite. Sans `price`, on dérive la borne du
     // mark courant ± `slippagePercent` (défaut 1 %), formatée aux règles de prix HL → market uniforme avec les
@@ -349,16 +352,17 @@ class HyperliquidMarket
   }
 
   // Soumet l'ordre au format unifié avec un prix limite résolu (fourni, ou borne de slippage calculée pour market).
-  // `type` est garanti `limit`/`market` par le guard de `place()` (seul appelant) → narrow explicite pour le REST.
+  // `triggerPrice` est transmis tel quel : le REST dérive le wire `trigger` (stop/take-profit) depuis le `type`.
   private submitOrder(input: PlaceOrderParams, price: string): Promise<Order> {
     return placeOrder(
       this.client,
       {
         name: input.name,
         side: input.side,
-        type: input.type as 'limit' | 'market',
+        type: input.type,
         size: input.size,
         price,
+        triggerPrice: input.triggerPrice,
         tif: input.tif,
         reduceOnly: input.reduceOnly,
         clientId: input.clientId as Hex | undefined,
