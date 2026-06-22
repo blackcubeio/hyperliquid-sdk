@@ -451,6 +451,12 @@ export interface OrderParams {
   tif?: Tif;
   /** Client order ID (bytes16 hex, `0x…`). */
   cloid?: `0x${string}`;
+  /** Prix de déclenchement (stop/take-profit). Présent ⇒ wire `trigger` au lieu de `limit`. */
+  triggerPx?: number | string;
+  /** Déclenché en marché (true, défaut) ou en limite au `price` (false). */
+  isMarket?: boolean;
+  /** Nature du déclencheur : `'sl'` (stop-loss) ou `'tp'` (take-profit). */
+  tpsl?: 'tp' | 'sl';
 }
 
 export interface OrderWire {
@@ -459,7 +465,9 @@ export interface OrderWire {
   p: string;
   s: string;
   r: boolean;
-  t: { limit: { tif: Tif } };
+  t:
+    | { limit: { tif: Tif } }
+    | { trigger: { isMarket: boolean; triggerPx: string; tpsl: 'tp' | 'sl' } };
   c?: `0x${string}`;
 }
 
@@ -812,7 +820,13 @@ export interface UserFill {
 
 // ── depuis rest/place-order.ts ──
 /** Type d'ordre unifié supporté par HL (`placeOrder`). */
-export type PlaceOrderType = 'limit' | 'market';
+export type PlaceOrderType =
+  | 'limit'
+  | 'market'
+  | 'stop'
+  | 'stopMarket'
+  | 'takeProfit'
+  | 'takeProfitMarket';
 
 /** Time-in-force unifié. */
 export type PlaceOrderTif = 'gtc' | 'ioc' | 'fok' | 'alo';
@@ -831,6 +845,8 @@ export interface PlaceOrderParams {
   size: string;
   /** Prix (limite, ou borne de slippage pour `market` — requis côté HL). */
   price: string;
+  /** Prix de déclenchement — requis pour les types stop/takeProfit ; `price` reste la borne d'exécution. */
+  triggerPrice?: string;
   /** Time-in-force (limit). */
   tif?: PlaceOrderTif;
   /** Reduce-only. */
