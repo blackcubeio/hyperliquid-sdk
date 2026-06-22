@@ -17,13 +17,23 @@ export function buildOrderAction(orders: OrderParams[], grouping = 'na'): Record
 
 /** Convertit un ordre en wire (clés courtes a/b/p/s/r/t/c). Réutilisé par `editOrder`. */
 export function buildOrderWire(order: OrderParams): OrderWire {
+  const orderType: OrderWire['t'] =
+    order.triggerPx !== undefined
+      ? {
+          trigger: {
+            isMarket: order.isMarket ?? true,
+            triggerPx: toWireValue(order.triggerPx),
+            tpsl: order.tpsl ?? 'sl',
+          },
+        }
+      : { limit: { tif: order.tif ?? 'Gtc' } };
   const wire: OrderWire = {
     a: order.asset,
     b: order.isBuy,
     p: toWireValue(order.price),
     s: toWireValue(order.size),
     r: order.reduceOnly ?? false,
-    t: { limit: { tif: order.tif ?? 'Gtc' } },
+    t: orderType,
   };
   if (order.cloid !== undefined) {
     wire.c = order.cloid;
