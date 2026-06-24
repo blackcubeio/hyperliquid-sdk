@@ -39,6 +39,9 @@ export function placeBatchOrders(
   client: HyperliquidClient,
   orders: BatchOrderLeg[],
   label: string,
+  // Grouping HL : 'na' (indépendants, défaut) ; 'normalTpsl' (entrée + TP/SL OCO) ; 'positionTpsl'
+  // (TP/SL attachés à la position — utilisé par `placeProtection` : SL + N TPs reduce-only).
+  grouping: 'na' | 'normalTpsl' | 'positionTpsl' = 'na',
 ): Promise<Order[]> {
   // HL exige un `price` par leg (limite, ou borne de slippage en market) — comme `placeOrder`.
   const priced = orders.map((o) => {
@@ -64,29 +67,31 @@ export function placeBatchOrders(
           | 'tp'
           | 'sl',
       }));
-      return exchangeL1Action<BatchResponse>(client, buildOrderAction(legs), label).then((res) => {
-        const statuses = res.response?.data?.statuses ?? [];
-        return priced.map((o, i) => {
-          const status = statuses[i];
-          const oid = status?.resting?.oid ?? status?.filled?.oid;
-          return {
-            name: o.name,
-            kind: o.kind ?? ('perp' as const),
-            id: oid === undefined ? '' : String(oid),
-            clientId: o.clientId ?? null,
-            side: o.side,
-            type: o.type,
-            price: o.price,
-            size: o.size,
-            filled: status?.filled === undefined ? '0' : o.size,
-            status: status?.filled === undefined ? ('open' as const) : ('filled' as const),
-            tif: o.tif ?? (o.type === 'market' ? 'ioc' : 'gtc'),
-            reduceOnly: o.reduceOnly ?? null,
-            time: Date.now(),
-            xtras: { status },
-          };
-        });
-      });
+      return exchangeL1Action<BatchResponse>(client, buildOrderAction(legs, grouping), label).then(
+        (res) => {
+          const statuses = res.response?.data?.statuses ?? [];
+          return priced.map((o, i) => {
+            const status = statuses[i];
+            const oid = status?.resting?.oid ?? status?.filled?.oid;
+            return {
+              name: o.name,
+              kind: o.kind ?? ('perp' as const),
+              id: oid === undefined ? '' : String(oid),
+              clientId: o.clientId ?? null,
+              side: o.side,
+              type: o.type,
+              price: o.price,
+              size: o.size,
+              filled: status?.filled === undefined ? '0' : o.size,
+              status: status?.filled === undefined ? ('open' as const) : ('filled' as const),
+              tif: o.tif ?? (o.type === 'market' ? 'ioc' : 'gtc'),
+              reduceOnly: o.reduceOnly ?? null,
+              time: Date.now(),
+              xtras: { status },
+            };
+          });
+        },
+      );
     },
   );
 }
