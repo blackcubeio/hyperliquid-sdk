@@ -9,8 +9,10 @@ import type {
   Order,
   OrderBook,
   Pair,
+  PlaceProtectionParams,
   Position,
   Price,
+  ProtectionTp,
   Signer,
   SubAccount,
   Trade,
@@ -129,7 +131,7 @@ import { getUserRole } from '../rest/info/get-user-role';
 import { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import { getVaultDetails } from '../rest/info/get-vault-details';
-import { placeBatchOrders } from '../rest/place-batch';
+import { type BatchOrderLeg, placeBatchOrders } from '../rest/place-batch';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
 import { updateLeverage } from '../rest/update-leverage';
@@ -408,6 +410,39 @@ class HyperliquidMarket
       { user: this.user(), name: input.name, kind: this.kind },
       this.signed(),
     );
+  }
+  // Protection d'une position : SL plein + N TPs partiels, tous reduce-only, en un lot avec
+  // `grouping:positionTpsl` (HL les rattache à la position). `side` = sens de la POSITION → ordres au
+  // sens OPPOSÉ. `price` (borne du market déclenché) fourni par l'appelant, sinon le triggerPrice.
+  public placeProtection(input: PlaceProtectionParams): Promise<Order[]> {
+    const exit: 'buy' | 'sell' = input.side === 'buy' ? 'sell' : 'buy';
+    const legs: BatchOrderLeg[] = [
+      {
+        name: input.name,
+        side: exit,
+        type: 'stopMarket',
+        triggerPrice: input.sl.triggerPrice,
+        price: input.sl.price ?? input.sl.triggerPrice,
+        size: input.sl.size,
+        reduceOnly: true,
+      },
+      ...input.tps.map(
+        (tp: ProtectionTp): BatchOrderLeg => ({
+          name: input.name,
+          side: exit,
+          type: 'takeProfitMarket',
+          triggerPrice: tp.triggerPrice,
+          price: tp.price ?? tp.triggerPrice,
+          size: tp.size,
+          reduceOnly: true,
+        }),
+      ),
+    ];
+    return placeBatchOrders(this.client, legs, this.signed(), 'positionTpsl');
+  }
+  // Annule toute la protection de la paire (ordres reduce-only) avant de la re-poser.
+  public cancelProtection(input: { name: string }): Promise<void> {
+    return this.cancelAll({ name: input.name }).then(() => undefined);
   }
   public edit(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.id === undefined) {
