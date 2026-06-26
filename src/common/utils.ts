@@ -14,9 +14,14 @@ export function floatToWire(x: number): string {
   return normalized;
 }
 
-/** Renvoie une valeur de prix/taille déjà en chaîne, ou la formate si c'est un nombre. */
+/**
+ * Normalise une valeur de prix/taille au format « wire » HL (zéros de fin retirés), qu'elle arrive en `number`
+ * OU en `string`. Une `string` mal normalisée (ex. `"70.190"` issue d'un `toFixed`) signée telle quelle ferait
+ * diverger le hash de celui recalculé par HL (qui normalise) → `User or API Wallet … does not exist`. On repasse
+ * donc TOUTE valeur par `floatToWire`.
+ */
 export function toWireValue(value: number | string): string {
-  return typeof value === 'string' ? value : floatToWire(value);
+  return floatToWire(typeof value === 'string' ? Number(value) : value);
 }
 
 /**
