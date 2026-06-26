@@ -131,6 +131,7 @@ import { getUserRole } from '../rest/info/get-user-role';
 import { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import { getVaultDetails } from '../rest/info/get-vault-details';
+import { moveStopOrder } from '../rest/move-stop';
 import { type BatchOrderLeg, placeBatchOrders } from '../rest/place-batch';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
@@ -158,6 +159,7 @@ import type {
   KeyHelper,
   LeverageParams,
   MarginModeParams,
+  MoveStopParams,
   OrderBookParams,
   PlaceOrderParams,
   SymbolParams,
@@ -443,6 +445,24 @@ class HyperliquidMarket
   // Annule toute la protection de la paire (ordres reduce-only) avant de la re-poser.
   public cancelProtection(input: { name: string }): Promise<void> {
     return this.cancelAll({ name: input.name }).then(() => undefined);
+  }
+  // Déplace le SL EN PLACE via `modify` (atomique) — la position n'est jamais sans SL, aucun cancel préalable.
+  // `side` = sens de la position → le SL est posé au sens OPPOSÉ. Le `modify` reconstruit le wire `trigger`.
+  public moveStop(input: MoveStopParams): Promise<{ name: string; id: string }> {
+    const exit: 'buy' | 'sell' = input.side === 'buy' ? 'sell' : 'buy';
+    return moveStopOrder(
+      this.client,
+      {
+        name: input.name,
+        stopId: input.stopId,
+        exitIsBuy: exit === 'buy',
+        triggerPrice: input.triggerPrice,
+        price: input.price ?? input.triggerPrice,
+        size: input.size,
+        kind: this.kind,
+      },
+      this.signed(),
+    );
   }
   public edit(input: EditOrderParams): Promise<{ name: string; id: string }> {
     if (input.id === undefined) {
