@@ -149,6 +149,20 @@ export interface PlaceProtectionParams {
   clientId?: string;
 }
 
+/**
+ * Entrée `moveStop` : DÉPLACE le SL d'une position (trailing / breakeven) SANS jamais la laisser nue.
+ * `side` = sens de la POSITION ; le SL est posé au sens OPPOSÉ. `stopId` = oid du SL courant à remplacer.
+ * Tailles + `price` (borne) fournis par l'appelant. Mécanisme natif par DEX (cf. `moveStop`).
+ */
+export interface MoveStopParams {
+  name: string;
+  side: 'buy' | 'sell';
+  stopId: string;
+  triggerPrice: string;
+  size: string;
+  price?: string;
+}
+
 /** Placement/annulation/édition d'ordres + levier (les 3 DEX). */
 export interface ITrading {
   place(input: PlaceOrderParams): Promise<Order>;
@@ -161,6 +175,13 @@ export interface ITrading {
   placeProtection(input: PlaceProtectionParams): Promise<Order[]>;
   /** Annule la protection (SL/TPs reduce-only) de la paire — à appeler avant de la re-poser. */
   cancelProtection(input: { name: string }): Promise<void>;
+  /**
+   * Déplace le SL d'une position (trailing/breakeven) en garantissant qu'elle n'est JAMAIS nue.
+   * Mécanisme natif par DEX (HL : `modify` atomique en place ; Aster/Pacifica : pose le nouveau SL
+   * PUIS annule l'ancien — 2 SL reduce-only transitoires, jamais d'instant sans SL). Renvoie l'identité
+   * du SL résultant (`{ name, id }`) ; l'état complet se relit via `getOpens`.
+   */
+  moveStop(input: MoveStopParams): Promise<{ name: string; id: string }>;
   /**
    * Modifie un ordre. Contrainte DEX : `edit` ne renvoie que **l'identité du nouvel ordre**
    * (`{ name, id }`), **pas** un snapshot complet comme `place()` → `Order`. La modification
