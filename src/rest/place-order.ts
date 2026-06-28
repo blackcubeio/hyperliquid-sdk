@@ -2,14 +2,24 @@ import type { HyperliquidClient } from '../common/config';
 import type { MarketKind, PlaceOrderParams, PlaceOrderTif } from '../common/types';
 import type { Order } from '../common/types';
 import type { Tif } from '../common/types';
+import { formatBoundPrice } from '../common/utils';
 import { exchangeL1Action } from './client';
 import { buildOrderAction } from './exchange/place-order';
-import { resolveAsset } from './info/resolve-asset';
+import { resolveAssets } from './info/resolve-asset';
 
-const TIF: Record<PlaceOrderTif, Tif> = { gtc: 'Gtc', ioc: 'Ioc', fok: 'Ioc', alo: 'Alo' };
+const TIF: Record<PlaceOrderTif, Tif> = {
+  gtc: 'Gtc',
+  ioc: 'Ioc',
+  fok: 'Ioc',
+  alo: 'Alo',
+};
 
 interface OrderResponse {
-  response?: { data?: { statuses?: { resting?: { oid: number }; filled?: { oid: number } }[] } };
+  response?: {
+    data?: {
+      statuses?: { resting?: { oid: number }; filled?: { oid: number } }[];
+    };
+  };
 }
 
 /**
@@ -27,19 +37,28 @@ export function placeOrder(
   const isMarket = params.type === 'stopMarket' || params.type === 'takeProfitMarket';
   const tpsl: 'tp' | 'sl' =
     params.type === 'takeProfit' || params.type === 'takeProfitMarket' ? 'tp' : 'sl';
-  return resolveAsset(client, params.name, kind, label).then((asset) => {
+  return resolveAssets(client, [{ name: params.name, kind }], label).then((resolved) => {
+    const info = resolved[0];
+    if (info === undefined) {
+      throw new Error(`placeOrder (Hyperliquid) : asset non résolu pour ${params.name}.`);
+    }
+    const { asset, szDecimals } = info;
+    // FORMATAGE des prix aux règles HL (5 sig figs + ≤ 6−szDecimals décimales) AVANT le wire : sinon rejet HL.
     return exchangeL1Action<OrderResponse>(
       client,
       buildOrderAction([
         {
           asset,
           isBuy: params.side === 'buy',
-          price: params.price,
+          price: formatBoundPrice(Number(params.price), szDecimals, kind),
           size: params.size,
           reduceOnly: params.reduceOnly,
           tif,
           cloid: params.clientId,
-          triggerPx: params.triggerPrice,
+          triggerPx:
+            params.triggerPrice !== undefined
+              ? formatBoundPrice(Number(params.triggerPrice), szDecimals, kind)
+              : params.triggerPrice,
           isMarket,
           tpsl,
         },

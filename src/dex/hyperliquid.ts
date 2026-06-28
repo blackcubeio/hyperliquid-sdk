@@ -18,7 +18,7 @@ import type {
   Trade,
   UserTrade,
 } from '../common/types';
-import { assetIndex, dateToMs } from '../common/utils';
+import { assetIndex, dateToMs, formatBoundPrice } from '../common/utils';
 import {
   type AccountFees,
   AccountFeesConverter,
@@ -206,18 +206,6 @@ function intervalToMs(interval: string): number {
     return 60_000;
   }
   return Number(match[1]) * (UNIT_MS[match[2] as string] ?? 60_000);
-}
-
-// Formate un prix aux règles HL : ≤5 chiffres significatifs ET ≤(MAX_DECIMALS - szDecimals) décimales, où
-// MAX_DECIMALS = 6 (perp) / 8 (spot). Les prix entiers sont toujours valides (cap de décimales ≤ 0 → arrondi entier).
-function formatBoundPrice(raw: number, szDecimals: number, kind: MarketKind): string {
-  const maxDecimals = (kind === 'spot' ? 8 : 6) - szDecimals;
-  const sig = Number(raw.toPrecision(5));
-  if (maxDecimals <= 0) {
-    return String(Math.round(sig));
-  }
-  const factor = 10 ** maxDecimals;
-  return String(Math.round(sig * factor) / factor);
 }
 
 /**
@@ -732,7 +720,12 @@ class HyperliquidTransfers extends HyperliquidNativeScope implements ITransfers 
           )
         : subAccountSpotTransfer(
             this.client,
-            { subAccountUser: sub, isDeposit: true, token: asset, amount: p.amount },
+            {
+              subAccountUser: sub,
+              isDeposit: true,
+              token: asset,
+              amount: p.amount,
+            },
             this.signed(),
           );
     }
@@ -746,7 +739,12 @@ class HyperliquidTransfers extends HyperliquidNativeScope implements ITransfers 
           )
         : subAccountSpotTransfer(
             this.client,
-            { subAccountUser: sub, isDeposit: false, token: asset, amount: p.amount },
+            {
+              subAccountUser: sub,
+              isDeposit: false,
+              token: asset,
+              amount: p.amount,
+            },
             this.signed(),
           );
     }
@@ -887,7 +885,10 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
         : { ...order, xtras: { ...order.xtras, statusRaw: wrapped.status } };
     });
   }
-  public getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]> {
+  public getFills(params: {
+    startTime: string;
+    endTime?: string;
+  }): Promise<UserTrade[]> {
     const converter = new UserTradeConverter();
     return getUserFillsByTime(
       this.client,
@@ -925,7 +926,10 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
     return getMeta(this.client, undefined, this.label).then((meta) =>
       twapCancel<Parameters<AckConverter['toCommon']>[0]>(
         this.client,
-        { asset: assetIndex(meta.universe, params.name), twapId: Number(params.id) },
+        {
+          asset: assetIndex(meta.universe, params.name),
+          twapId: Number(params.id),
+        },
         this.signed(),
       ).then((res) => new AckConverter().toCommon(res)),
     );
@@ -987,7 +991,10 @@ class HyperliquidBuildersScope extends HyperliquidNativeScope implements IBuilde
       ack.toCommon(r),
     );
   }
-  public getMaxFee(params: { user: `0x${string}`; builder: `0x${string}` }): Promise<number> {
+  public getMaxFee(params: {
+    user: `0x${string}`;
+    builder: `0x${string}`;
+  }): Promise<number> {
     return getMaxBuilderFee(this.client, params, this.label).then((res) => Number(res));
   }
 }

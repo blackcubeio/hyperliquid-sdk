@@ -1,3 +1,21 @@
+import type { MarketKind } from './types';
+
+/**
+ * Formate un PRIX aux règles HL : ≤ 5 chiffres significatifs ET ≤ `MAX_DECIMALS − szDecimals` décimales, où
+ * MAX_DECIMALS = 6 (perp) / 8 (spot). Les prix ENTIERS sont toujours valides (cap ≤ 0 → arrondi entier). `szDecimals`
+ * vient des infos de la paire (`meta.universe`). Doit être appliqué à TOUT prix d'ordre (entrée, SL trigger/price,
+ * TP trigger/price) AVANT le wire : sinon un trigger trop précis est rejeté par HL (« does not exist » / leg ignoré).
+ */
+export function formatBoundPrice(raw: number, szDecimals: number, kind: MarketKind): string {
+  const maxDecimals = (kind === 'spot' ? 8 : 6) - szDecimals;
+  const sig = Number(raw.toPrecision(5));
+  if (maxDecimals <= 0) {
+    return String(Math.round(sig));
+  }
+  const factor = 10 ** maxDecimals;
+  return String(Math.round(sig * factor) / factor);
+}
+
 /**
  * Formate un nombre en chaîne « wire » Hyperliquid : 8 décimales max, zéros de fin
  * retirés. Iso `float_to_wire` du SDK Python (lève si l'arrondi perd de la précision).

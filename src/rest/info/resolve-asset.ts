@@ -40,3 +40,43 @@ export function resolveAsset(
     return index;
   });
 }
+
+/** Asset ID + `szDecimals` (infos paire, pour formater les prix aux règles HL). */
+export interface ResolvedAsset {
+  asset: number;
+  szDecimals: number;
+}
+
+/**
+ * Résout asset ID **+ `szDecimals`** pour un LOT de legs, en chargeant le meta UNE seule fois par kind (perp/spot)
+ * — évite N fetchs `meta` pour un batch. `szDecimals` sert à `formatBoundPrice` (règles de prix HL). Perp : exact
+ * (meta.universe). Spot : best-effort `0` (le szDecimals spot vient des tokens ; le perp couvre le trading actuel).
+ */
+export function resolveAssets(
+  client: HyperliquidClient,
+  legs: { name: string; kind?: MarketKind }[],
+  label?: string,
+): Promise<ResolvedAsset[]> {
+  const needPerp = legs.some((leg) => (leg.kind ?? 'perp') === 'perp');
+  const needSpot = legs.some((leg) => leg.kind === 'spot');
+  return Promise.all([
+    needPerp ? getMeta(client, undefined, label) : Promise.resolve(null),
+    needSpot ? getMetaSpot(client, label) : Promise.resolve(null),
+  ]).then(([perpMeta, spotMeta]) =>
+    legs.map((leg) => {
+      if ((leg.kind ?? 'perp') === 'spot') {
+        const pair = spotMeta?.universe.find((p) => p.name === leg.name);
+        if (pair === undefined) {
+          throw new Error(`Paire spot introuvable dans l'univers : ${leg.name}`);
+        }
+        return { asset: SPOT_ASSET_OFFSET + pair.index, szDecimals: 0 };
+      }
+      const index = perpMeta?.universe.findIndex((asset) => asset.name === leg.name) ?? -1;
+      const entry = index >= 0 ? perpMeta?.universe[index] : undefined;
+      if (entry === undefined) {
+        throw new Error(`Coin perp introuvable dans l'univers : ${leg.name}`);
+      }
+      return { asset: index, szDecimals: entry.szDecimals };
+    }),
+  );
+}
