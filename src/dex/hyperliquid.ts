@@ -830,7 +830,10 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
   // HL les active au fill du parent et les ANNULE LUI-MÊME si le parent meurt (IOC ratée, cancel). C'est le
   // lien de destin natif entrée↔protection (incident Blips n°3 du 2026-07-05 : grappe 'na' à entrée morte
   // → triggers orphelins). 'positionTpsl' reste réservé à `placeProtection` (position existante).
-  public placeBatch(orders: PlaceOrderParams[], grouping: 'na' | 'normalTpsl' = 'na'): Promise<Order[]> {
+  public placeBatch(
+    orders: PlaceOrderParams[],
+    grouping: 'na' | 'normalTpsl' = 'na',
+  ): Promise<Order[]> {
     return placeBatchOrders(this.client, orders, this.signed(), grouping);
   }
   public cancelMany(cancels: CancelLegParams[]): Promise<CancelResult[]> {
