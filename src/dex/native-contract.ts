@@ -150,8 +150,9 @@ export interface INativePerp {
   getPredictedFundings(): ReturnType<typeof getPredictedFundings>;
   getPerpDexs(): ReturnType<typeof getPerpDexs>;
   // ── ordres avancés (signés ; I/O normalisés, types communs) ──
-  /** Lot d'ordres — entrée `PlaceOrderParams[]` (vocab commun), sortie `Order[]` (1 par leg). */
-  placeBatch(orders: PlaceOrderParams[]): Promise<Order[]>;
+  /** Lot d'ordres — entrée `PlaceOrderParams[]` (vocab commun), sortie `Order[]` (1 par leg).
+   *  `grouping 'normalTpsl'` : TP/SL enfants de l'entrée (HL les annule si le parent meurt). */
+  placeBatch(orders: PlaceOrderParams[], grouping?: 'na' | 'normalTpsl'): Promise<Order[]>;
   /** Annulation par lot (par `id`/oid, vocab commun) → `CancelResult[]` (1 par leg). */
   cancelMany(cancels: CancelLegParams[]): Promise<CancelResult[]>;
   /** Annulation par lot (par `clientId`/cloid, vocab commun) → `CancelResult[]` (1 par leg). */

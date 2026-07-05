@@ -16,6 +16,13 @@ describe('floatToWire', () => {
 });
 
 describe('buildOrderAction', () => {
+  it("relaie le grouping demandé ('normalTpsl' : TP/SL enfants de l'entrée, annulés par HL avec le parent)", () => {
+    const action = buildOrderAction([{ asset: 0, isBuy: true, price: 30000, size: 0.1 }], 'normalTpsl');
+    expect((action as { grouping: string }).grouping).toBe('normalTpsl');
+    // Le défaut reste 'na' — aucun appelant existant ne change de comportement.
+    expect((buildOrderAction([{ asset: 0, isBuy: true, price: 30000, size: 0.1 }]) as { grouping: string }).grouping).toBe('na');
+  });
+
   it("produit le wire du vecteur et signe iso (lie l'action au cœur signature)", () => {
     const action = buildOrderAction([{ asset: 0, isBuy: true, price: 30000, size: 0.1 }]);
     expect(action).toEqual({

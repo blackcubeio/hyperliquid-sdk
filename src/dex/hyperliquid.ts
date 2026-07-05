@@ -826,8 +826,12 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
     return getPerpDexs(this.client, this.label);
   }
   // ── ordres avancés (signés ; I/O normalisés, types communs) ──
-  public placeBatch(orders: PlaceOrderParams[]): Promise<Order[]> {
-    return placeBatchOrders(this.client, orders, this.signed());
+  // `grouping` (défaut 'na') : 'normalTpsl' = l'entrée est le PARENT, les TP/SL du lot sont ses ENFANTS —
+  // HL les active au fill du parent et les ANNULE LUI-MÊME si le parent meurt (IOC ratée, cancel). C'est le
+  // lien de destin natif entrée↔protection (incident Blips n°3 du 2026-07-05 : grappe 'na' à entrée morte
+  // → triggers orphelins). 'positionTpsl' reste réservé à `placeProtection` (position existante).
+  public placeBatch(orders: PlaceOrderParams[], grouping: 'na' | 'normalTpsl' = 'na'): Promise<Order[]> {
+    return placeBatchOrders(this.client, orders, this.signed(), grouping);
   }
   public cancelMany(cancels: CancelLegParams[]): Promise<CancelResult[]> {
     return getMeta(this.client, undefined, this.label).then((meta) => {
