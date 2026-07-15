@@ -1,8 +1,9 @@
 import type { HyperliquidClient } from '../common/config';
 import type { MarketKind, Order, Tif } from '../common/types';
+import { formatBoundPrice } from '../common/utils';
 import { exchangeL1Action } from './client';
 import { buildOrderAction } from './exchange/place-order';
-import { resolveAsset } from './info/resolve-asset';
+import { resolveAssets } from './info/resolve-asset';
 
 /** Leg d'un lot, au **vocabulaire commun** (= forme de `PlaceOrderParams` du contrat). */
 export interface BatchOrderLeg {
@@ -27,7 +28,11 @@ const TIF: Record<'gtc' | 'ioc' | 'fok' | 'alo', Tif> = {
 };
 
 interface BatchResponse {
-  response?: { data?: { statuses?: { resting?: { oid: number }; filled?: { oid: number } }[] } };
+  response?: {
+    data?: {
+      statuses?: { resting?: { oid: number }; filled?: { oid: number } }[];
+    };
+  };
 }
 
 /**
@@ -39,6 +44,9 @@ export function placeBatchOrders(
   client: HyperliquidClient,
   orders: BatchOrderLeg[],
   label: string,
+  // Grouping HL : 'na' (indépendants, défaut) ; 'normalTpsl' (entrée + TP/SL OCO) ; 'positionTpsl'
+  // (TP/SL attachés à la position — utilisé par `placeProtection` : SL + N TPs reduce-only).
+  grouping: 'na' | 'normalTpsl' | 'positionTpsl' = 'na',
 ): Promise<Order[]> {
   // HL exige un `price` par leg (limite, ou borne de slippage en market) — comme `placeOrder`.
   const priced = orders.map((o) => {
@@ -47,24 +55,40 @@ export function placeBatchOrders(
     }
     return { ...o, price: o.price };
   });
-  // Résolution d'asset **par leg** selon son `kind` (perp via index, spot via index + 10000).
-  return Promise.all(priced.map((o) => resolveAsset(client, o.name, o.kind ?? 'perp', label))).then(
-    (assets) => {
-      const legs = priced.map((o, i) => ({
-        asset: assets[i] as number,
+  // Résolution asset + szDecimals **par leg** (meta chargé 1×), puis FORMATAGE des prix aux règles HL : sans ça un
+  // `price`/`triggerPx` trop précis fait diverger le hash signé / est rejeté par HL (leg ignoré → SL/TP absent).
+  return resolveAssets(
+    client,
+    priced.map((o) => ({ name: o.name, kind: o.kind })),
+    label,
+  ).then((resolved) => {
+    const legs = priced.map((o, i) => {
+      const resolvedLeg = resolved[i];
+      if (resolvedLeg === undefined) {
+        throw new Error(`placeBatch (Hyperliquid) : asset non résolu pour ${o.name}.`);
+      }
+      const { asset, szDecimals } = resolvedLeg;
+      const kind = o.kind ?? 'perp';
+      return {
+        asset,
         isBuy: o.side === 'buy',
-        price: o.price,
+        price: formatBoundPrice(Number(o.price), szDecimals, kind),
         size: o.size,
         reduceOnly: o.reduceOnly,
         tif: o.type === 'market' ? ('Ioc' as Tif) : TIF[o.tif ?? 'gtc'],
         cloid: o.clientId as `0x${string}` | undefined,
-        triggerPx: o.triggerPrice,
+        triggerPx:
+          o.triggerPrice !== undefined
+            ? formatBoundPrice(Number(o.triggerPrice), szDecimals, kind)
+            : o.triggerPrice,
         isMarket: o.type === 'stopMarket' || o.type === 'takeProfitMarket',
         tpsl: (o.type === 'takeProfit' || o.type === 'takeProfitMarket' ? 'tp' : 'sl') as
           | 'tp'
           | 'sl',
-      }));
-      return exchangeL1Action<BatchResponse>(client, buildOrderAction(legs), label).then((res) => {
+      };
+    });
+    return exchangeL1Action<BatchResponse>(client, buildOrderAction(legs, grouping), label).then(
+      (res) => {
         const statuses = res.response?.data?.statuses ?? [];
         return priced.map((o, i) => {
           const status = statuses[i];
@@ -86,7 +110,7 @@ export function placeBatchOrders(
             xtras: { status },
           };
         });
-      });
-    },
-  );
+      },
+    );
+  });
 }

@@ -9,14 +9,16 @@ import type {
   Order,
   OrderBook,
   Pair,
+  PlaceProtectionParams,
   Position,
   Price,
+  ProtectionTp,
   Signer,
   SubAccount,
   Trade,
   UserTrade,
 } from '../common/types';
-import { assetIndex, dateToMs } from '../common/utils';
+import { assetIndex, dateToMs, formatBoundPrice } from '../common/utils';
 import {
   type AccountFees,
   AccountFeesConverter,
@@ -129,7 +131,8 @@ import { getUserRole } from '../rest/info/get-user-role';
 import { getUserTwapSliceFills } from '../rest/info/get-user-twap-slice-fills';
 import { getUserVaultEquities } from '../rest/info/get-user-vault-equities';
 import { getVaultDetails } from '../rest/info/get-vault-details';
-import { placeBatchOrders } from '../rest/place-batch';
+import { moveStopOrder } from '../rest/move-stop';
+import { type BatchOrderLeg, placeBatchOrders } from '../rest/place-batch';
 import { placeOrder } from '../rest/place-order';
 import { keyTypeOf, privateKeyToAddress, toChecksumAddress } from '../rest/signing';
 import { updateLeverage } from '../rest/update-leverage';
@@ -156,6 +159,7 @@ import type {
   KeyHelper,
   LeverageParams,
   MarginModeParams,
+  MoveStopParams,
   OrderBookParams,
   PlaceOrderParams,
   SymbolParams,
@@ -202,18 +206,6 @@ function intervalToMs(interval: string): number {
     return 60_000;
   }
   return Number(match[1]) * (UNIT_MS[match[2] as string] ?? 60_000);
-}
-
-// Formate un prix aux règles HL : ≤5 chiffres significatifs ET ≤(MAX_DECIMALS - szDecimals) décimales, où
-// MAX_DECIMALS = 6 (perp) / 8 (spot). Les prix entiers sont toujours valides (cap de décimales ≤ 0 → arrondi entier).
-function formatBoundPrice(raw: number, szDecimals: number, kind: MarketKind): string {
-  const maxDecimals = (kind === 'spot' ? 8 : 6) - szDecimals;
-  const sig = Number(raw.toPrecision(5));
-  if (maxDecimals <= 0) {
-    return String(Math.round(sig));
-  }
-  const factor = 10 ** maxDecimals;
-  return String(Math.round(sig * factor) / factor);
 }
 
 /**
@@ -406,6 +398,90 @@ class HyperliquidMarket
     return cancelAllOrders(
       this.client,
       { user: this.user(), name: input.name, kind: this.kind },
+      this.signed(),
+    );
+  }
+  // Protection d'une position : SL plein + N TPs partiels, tous reduce-only, en un lot avec
+  // `grouping:positionTpsl` (HL les rattache à la position). `side` = sens de la POSITION → ordres au
+  // sens OPPOSÉ. `price` (borne du market déclenché) fourni par l'appelant, sinon le triggerPrice.
+  public placeProtection(input: PlaceProtectionParams): Promise<Order[]> {
+    const exit: 'buy' | 'sell' = input.side === 'buy' ? 'sell' : 'buy';
+    const legs: BatchOrderLeg[] = [
+      {
+        name: input.name,
+        side: exit,
+        type: 'stopMarket',
+        triggerPrice: input.sl.triggerPrice,
+        price: input.sl.price ?? input.sl.triggerPrice,
+        size: input.sl.size,
+        reduceOnly: true,
+      },
+      ...input.tps.map(
+        (tp: ProtectionTp): BatchOrderLeg => ({
+          name: input.name,
+          side: exit,
+          type: 'takeProfitMarket',
+          triggerPrice: tp.triggerPrice,
+          price: tp.price ?? tp.triggerPrice,
+          size: tp.size,
+          reduceOnly: true,
+        }),
+      ),
+    ];
+    return placeBatchOrders(this.client, legs, this.signed(), 'positionTpsl');
+  }
+  // Ouvre une position AVEC sa protection en un lot ATOMIQUE : `grouping:normalTpsl` (l'entrée est le PARENT,
+  // les TP/SL sont ses ENFANTS — HL les annule lui-même si l'entrée ne remplit pas, aucun orphelin).
+  // `protection.side` = sens de la POSITION → protection au sens OPPOSÉ ; l'entrée garde son sens propre.
+  public createEntryWithProtection(
+    entry: PlaceOrderParams,
+    protection: PlaceProtectionParams,
+  ): Promise<Order[]> {
+    const exit: 'buy' | 'sell' = protection.side === 'buy' ? 'sell' : 'buy';
+    const legs: BatchOrderLeg[] = [
+      entry,
+      {
+        name: protection.name,
+        side: exit,
+        type: 'stopMarket',
+        triggerPrice: protection.sl.triggerPrice,
+        price: protection.sl.price ?? protection.sl.triggerPrice,
+        size: protection.sl.size,
+        reduceOnly: true,
+      },
+      ...protection.tps.map(
+        (tp: ProtectionTp): BatchOrderLeg => ({
+          name: protection.name,
+          side: exit,
+          type: 'takeProfitMarket',
+          triggerPrice: tp.triggerPrice,
+          price: tp.price ?? tp.triggerPrice,
+          size: tp.size,
+          reduceOnly: true,
+        }),
+      ),
+    ];
+    return placeBatchOrders(this.client, legs, this.signed(), 'normalTpsl');
+  }
+  // Annule toute la protection de la paire (ordres reduce-only) avant de la re-poser.
+  public cancelProtection(input: { name: string }): Promise<void> {
+    return this.cancelAll({ name: input.name }).then(() => undefined);
+  }
+  // Déplace le SL EN PLACE via `modify` (atomique) — la position n'est jamais sans SL, aucun cancel préalable.
+  // `side` = sens de la position → le SL est posé au sens OPPOSÉ. Le `modify` reconstruit le wire `trigger`.
+  public moveStop(input: MoveStopParams): Promise<{ name: string; id: string }> {
+    const exit: 'buy' | 'sell' = input.side === 'buy' ? 'sell' : 'buy';
+    return moveStopOrder(
+      this.client,
+      {
+        name: input.name,
+        stopId: input.stopId,
+        exitIsBuy: exit === 'buy',
+        triggerPrice: input.triggerPrice,
+        price: input.price ?? input.triggerPrice,
+        size: input.size,
+        kind: this.kind,
+      },
       this.signed(),
     );
   }
@@ -677,7 +753,12 @@ class HyperliquidTransfers extends HyperliquidNativeScope implements ITransfers 
           )
         : subAccountSpotTransfer(
             this.client,
-            { subAccountUser: sub, isDeposit: true, token: asset, amount: p.amount },
+            {
+              subAccountUser: sub,
+              isDeposit: true,
+              token: asset,
+              amount: p.amount,
+            },
             this.signed(),
           );
     }
@@ -691,7 +772,12 @@ class HyperliquidTransfers extends HyperliquidNativeScope implements ITransfers 
           )
         : subAccountSpotTransfer(
             this.client,
-            { subAccountUser: sub, isDeposit: false, token: asset, amount: p.amount },
+            {
+              subAccountUser: sub,
+              isDeposit: false,
+              token: asset,
+              amount: p.amount,
+            },
             this.signed(),
           );
     }
@@ -773,8 +859,15 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
     return getPerpDexs(this.client, this.label);
   }
   // ── ordres avancés (signés ; I/O normalisés, types communs) ──
-  public placeBatch(orders: PlaceOrderParams[]): Promise<Order[]> {
-    return placeBatchOrders(this.client, orders, this.signed());
+  // `grouping` (défaut 'na') : 'normalTpsl' = l'entrée est le PARENT, les TP/SL du lot sont ses ENFANTS —
+  // HL les active au fill du parent et les ANNULE LUI-MÊME si le parent meurt (IOC ratée, cancel). C'est le
+  // lien de destin natif entrée↔protection (incident Blips n°3 du 2026-07-05 : grappe 'na' à entrée morte
+  // → triggers orphelins). 'positionTpsl' reste réservé à `placeProtection` (position existante).
+  public placeBatch(
+    orders: PlaceOrderParams[],
+    grouping: 'na' | 'normalTpsl' = 'na',
+  ): Promise<Order[]> {
+    return placeBatchOrders(this.client, orders, this.signed(), grouping);
   }
   public cancelMany(cancels: CancelLegParams[]): Promise<CancelResult[]> {
     return getMeta(this.client, undefined, this.label).then((meta) => {
@@ -832,7 +925,10 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
         : { ...order, xtras: { ...order.xtras, statusRaw: wrapped.status } };
     });
   }
-  public getFills(params: { startTime: string; endTime?: string }): Promise<UserTrade[]> {
+  public getFills(params: {
+    startTime: string;
+    endTime?: string;
+  }): Promise<UserTrade[]> {
     const converter = new UserTradeConverter();
     return getUserFillsByTime(
       this.client,
@@ -870,7 +966,10 @@ class HyperliquidNativePerp extends HyperliquidNativeScope implements INativePer
     return getMeta(this.client, undefined, this.label).then((meta) =>
       twapCancel<Parameters<AckConverter['toCommon']>[0]>(
         this.client,
-        { asset: assetIndex(meta.universe, params.name), twapId: Number(params.id) },
+        {
+          asset: assetIndex(meta.universe, params.name),
+          twapId: Number(params.id),
+        },
         this.signed(),
       ).then((res) => new AckConverter().toCommon(res)),
     );
@@ -932,7 +1031,10 @@ class HyperliquidBuildersScope extends HyperliquidNativeScope implements IBuilde
       ack.toCommon(r),
     );
   }
-  public getMaxFee(params: { user: `0x${string}`; builder: `0x${string}` }): Promise<number> {
+  public getMaxFee(params: {
+    user: `0x${string}`;
+    builder: `0x${string}`;
+  }): Promise<number> {
     return getMaxBuilderFee(this.client, params, this.label).then((res) => Number(res));
   }
 }

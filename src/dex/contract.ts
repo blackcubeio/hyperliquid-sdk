@@ -129,11 +129,69 @@ export interface IPublicTrades {
   getTrades(query: TradesParams): Promise<Trade[]>;
 }
 
+/** Un take-profit partiel d'une protection (déclenchement + taille ; `price` = borne d'exécution). */
+export interface ProtectionTp {
+  triggerPrice: string;
+  size: string;
+  price?: string;
+}
+
+/**
+ * Entrée `placeProtection` : SL plein + N TPs partiels (reduce-only) sur une position EXISTANTE.
+ * `side` = sens de la POSITION ; les ordres sont posés au sens OPPOSÉ. Tailles + `price` (borne)
+ * fournis par l'appelant — pas de recalcul interne (anti-résidu).
+ */
+export interface PlaceProtectionParams {
+  name: string;
+  side: 'buy' | 'sell';
+  sl: { triggerPrice: string; size: string; price?: string };
+  tps: ProtectionTp[];
+  clientId?: string;
+}
+
+/**
+ * Entrée `moveStop` : DÉPLACE le SL d'une position (trailing / breakeven) SANS jamais la laisser nue.
+ * `side` = sens de la POSITION ; le SL est posé au sens OPPOSÉ. `stopId` = oid du SL courant à remplacer.
+ * Tailles + `price` (borne) fournis par l'appelant. Mécanisme natif par DEX (cf. `moveStop`).
+ */
+export interface MoveStopParams {
+  name: string;
+  side: 'buy' | 'sell';
+  stopId: string;
+  triggerPrice: string;
+  size: string;
+  price?: string;
+}
+
 /** Placement/annulation/édition d'ordres + levier (les 3 DEX). */
 export interface ITrading {
   place(input: PlaceOrderParams): Promise<Order>;
   cancel(input: CancelOrderParams): Promise<void>;
   cancelAll(input: CancelAllParams): Promise<{ cancelled: number | null }>;
+  /**
+   * Pose SL + N TPs (reduce-only) sur une position EXISTANTE, en un lot. Mécanisme natif par DEX
+   * (HL : batch `grouping:positionTpsl` ; Aster : batch de conditionnels ; Pacifica : `placeTpsl`/`placeStop`).
+   */
+  placeProtection(input: PlaceProtectionParams): Promise<Order[]>;
+  /**
+   * Ouvre une position AVEC sa protection en un seul geste ATOMIQUE : entrée + SL + N TPs. Si l'entrée ne
+   * remplit pas, la protection ne naît jamais (aucun orphelin). Mécanisme natif par DEX (Aster : batch de
+   * conditionnels ; HL : batch `grouping:normalTpsl` ; Pacifica : TP/SL embarqués dans l'ordre). Le premier
+   * `Order` retourné = l'entrée ; `entry.side` = sens de la position, `protection.side` = idem (legs opposés).
+   */
+  createEntryWithProtection(
+    entry: PlaceOrderParams,
+    protection: PlaceProtectionParams,
+  ): Promise<Order[]>;
+  /** Annule la protection (SL/TPs reduce-only) de la paire — à appeler avant de la re-poser. */
+  cancelProtection(input: { name: string }): Promise<void>;
+  /**
+   * Déplace le SL d'une position (trailing/breakeven) en garantissant qu'elle n'est JAMAIS nue.
+   * Mécanisme natif par DEX (HL : `modify` atomique en place ; Aster/Pacifica : pose le nouveau SL
+   * PUIS annule l'ancien — 2 SL reduce-only transitoires, jamais d'instant sans SL). Renvoie l'identité
+   * du SL résultant (`{ name, id }`) ; l'état complet se relit via `getOpens`.
+   */
+  moveStop(input: MoveStopParams): Promise<{ name: string; id: string }>;
   /**
    * Modifie un ordre. Contrainte DEX : `edit` ne renvoie que **l'identité du nouvel ordre**
    * (`{ name, id }`), **pas** un snapshot complet comme `place()` → `Order`. La modification
