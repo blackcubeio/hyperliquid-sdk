@@ -428,7 +428,10 @@ class HyperliquidMarket
         }),
       ),
     ];
-    return placeBatchOrders(this.client, legs, this.signed(), 'positionTpsl');
+    // > 1 TP : `positionTpsl` gobe silencieusement les TP au-delà du premier → on bascule en `'na'` (triggers
+    // INDÉPENDANTS) pour poser N TP reduce-only rattachés à la position (vérifié testnet). ≤ 1 TP : `positionTpsl`.
+    const grouping = input.tps.length > 1 ? 'na' : 'positionTpsl';
+    return placeBatchOrders(this.client, legs, this.signed(), grouping);
   }
   // Ouvre une position AVEC sa protection en un lot ATOMIQUE : `grouping:normalTpsl` (l'entrée est le PARENT,
   // les TP/SL sont ses ENFANTS — HL les annule lui-même si l'entrée ne remplit pas, aucun orphelin).
@@ -461,7 +464,12 @@ class HyperliquidMarket
         }),
       ),
     ];
-    return placeBatchOrders(this.client, legs, this.signed(), 'normalTpsl');
+    // > 1 TP : `normalTpsl` (OCO 1 TP + 1 SL) rejette « Unexpected number of trigger orders » → on bascule en
+    // `'na'` (triggers INDÉPENDANTS, N TP acceptés — vérifié testnet, entrée + SL + 2 TP OK). Compromis : `'na'`
+    // perd l'auto-annulation des enfants si l'entrée IOC ne remplit pas → orphelins balayés par cancelProtection
+    // (côté appelant, garde 3.0.7). ≤ 1 TP : `normalTpsl` conservé (lien de destin natif, zéro orphelin).
+    const grouping = protection.tps.length > 1 ? 'na' : 'normalTpsl';
+    return placeBatchOrders(this.client, legs, this.signed(), grouping);
   }
   // Annule toute la protection de la paire (ordres reduce-only) avant de la re-poser.
   public cancelProtection(input: { name: string }): Promise<void> {
