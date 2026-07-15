@@ -430,6 +430,39 @@ class HyperliquidMarket
     ];
     return placeBatchOrders(this.client, legs, this.signed(), 'positionTpsl');
   }
+  // Ouvre une position AVEC sa protection en un lot ATOMIQUE : `grouping:normalTpsl` (l'entrée est le PARENT,
+  // les TP/SL sont ses ENFANTS — HL les annule lui-même si l'entrée ne remplit pas, aucun orphelin).
+  // `protection.side` = sens de la POSITION → protection au sens OPPOSÉ ; l'entrée garde son sens propre.
+  public createEntryWithProtection(
+    entry: PlaceOrderParams,
+    protection: PlaceProtectionParams,
+  ): Promise<Order[]> {
+    const exit: 'buy' | 'sell' = protection.side === 'buy' ? 'sell' : 'buy';
+    const legs: BatchOrderLeg[] = [
+      entry,
+      {
+        name: protection.name,
+        side: exit,
+        type: 'stopMarket',
+        triggerPrice: protection.sl.triggerPrice,
+        price: protection.sl.price ?? protection.sl.triggerPrice,
+        size: protection.sl.size,
+        reduceOnly: true,
+      },
+      ...protection.tps.map(
+        (tp: ProtectionTp): BatchOrderLeg => ({
+          name: protection.name,
+          side: exit,
+          type: 'takeProfitMarket',
+          triggerPrice: tp.triggerPrice,
+          price: tp.price ?? tp.triggerPrice,
+          size: tp.size,
+          reduceOnly: true,
+        }),
+      ),
+    ];
+    return placeBatchOrders(this.client, legs, this.signed(), 'normalTpsl');
+  }
   // Annule toute la protection de la paire (ordres reduce-only) avant de la re-poser.
   public cancelProtection(input: { name: string }): Promise<void> {
     return this.cancelAll({ name: input.name }).then(() => undefined);
