@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/hyperliquid-sdk",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "TypeScript SDK for the Hyperliquid exchange (perpetuals & spot DEX): REST info/exchange, WebSocket, EIP-712 signing",
   "license": "BSD-3-Clause",
   "author": "Blackcube (https://blackcube.io)",
