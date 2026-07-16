@@ -305,8 +305,28 @@ class HyperliquidMarket
   }
 
   // ── IProductAccount ──
-  public getPositions(query?: SymbolParams): Promise<Position[]> {
-    return getPositions(this.client, { user: this.user(), name: query?.name }, this.signed());
+  public async getPositions(query?: SymbolParams): Promise<Position[]> {
+    const positions = await getPositions(
+      this.client,
+      { user: this.user(), name: query?.name },
+      this.signed(),
+    );
+    return this.withMark(positions);
+  }
+
+  // HL fournit `unrealizedPnl` mais PAS `markPrice` dans les positions (`markPx` absent du wire clearinghouse).
+  // On le complète depuis le mark PUBLIC (`getPrices`) pour que les `Position` soient complètes comme les autres
+  // DEX (contrat de façade uniforme). Mark introuvable → on laisse `null` (l'appelant garde sa dernière valeur).
+  private async withMark(positions: Position[]): Promise<Position[]> {
+    if (positions.length === 0) {
+      return positions;
+    }
+    const prices = await getPrices(this.client, this.label);
+    const markByName = new Map(prices.map((price) => [price.name, price.mark]));
+    return positions.map((position) => {
+      const mark = markByName.get(position.name);
+      return mark != null && mark !== '' ? { ...position, markPrice: mark } : position;
+    });
   }
   public getOpens(query?: SymbolParams): Promise<Order[]> {
     return getOpenOrders(this.client, { user: this.user(), name: query?.name }, this.signed());
