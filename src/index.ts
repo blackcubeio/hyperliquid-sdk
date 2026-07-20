@@ -24,6 +24,8 @@ export type { Signer, Network } from './common/types';
 export type {
   Balance,
   Candle,
+  EquityPoint,
+  EquityRange,
   FundingRate,
   MarketKind,
   Order,

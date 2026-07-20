@@ -2,6 +2,8 @@ import { type HyperliquidClient, type InitOptions, init } from '../common/config
 import type {
   Balance,
   Candle,
+  EquityPoint,
+  EquityRange,
   FrontendOrder,
   FundingRate,
   Hex,
@@ -305,8 +307,28 @@ class HyperliquidMarket
   }
 
   // ── IProductAccount ──
-  public getPositions(query?: SymbolParams): Promise<Position[]> {
-    return getPositions(this.client, { user: this.user(), name: query?.name }, this.signed());
+  public async getPositions(query?: SymbolParams): Promise<Position[]> {
+    const positions = await getPositions(
+      this.client,
+      { user: this.user(), name: query?.name },
+      this.signed(),
+    );
+    return this.withMark(positions);
+  }
+
+  // HL fournit `unrealizedPnl` mais PAS `markPrice` dans les positions (`markPx` absent du wire clearinghouse).
+  // On le complète depuis le mark PUBLIC (`getPrices`) pour que les `Position` soient complètes comme les autres
+  // DEX (contrat de façade uniforme). Mark introuvable → on laisse `null` (l'appelant garde sa dernière valeur).
+  private async withMark(positions: Position[]): Promise<Position[]> {
+    if (positions.length === 0) {
+      return positions;
+    }
+    const prices = await getPrices(this.client, this.label);
+    const markByName = new Map(prices.map((price) => [price.name, price.mark]));
+    return positions.map((position) => {
+      const mark = markByName.get(position.name);
+      return mark != null && mark !== '' ? { ...position, markPrice: mark } : position;
+    });
   }
   public getOpens(query?: SymbolParams): Promise<Order[]> {
     return getOpenOrders(this.client, { user: this.user(), name: query?.name }, this.signed());
@@ -590,6 +612,23 @@ class HyperliquidAccount implements IAccount, IDeadManSwitch {
       { amount: input.amount, address: input.address },
       this.signed(),
     ).then((r) => ack.toCommon(r));
+  }
+
+  // Courbe d'équité mark-to-market normalisée (cœur commun) : réutilise le `portfolio` natif, en
+  // extrait la fenêtre demandée (`all` → `allTime` côté HL) et la réduit à {time, equity}. Le détail
+  // riche (pnlHistory, volume, autres fenêtres) reste accessible via `native.account().getPortfolio()`.
+  public getEquityHistory(range: EquityRange = 'month'): Promise<EquityPoint[]> {
+    const window = range === 'all' ? 'allTime' : range;
+    return getPortfolio(this.client, { user: this.user() as Hex }, this.signed()).then((res) => {
+      const windows = new PortfolioConverter().toCommon(
+        res as Parameters<PortfolioConverter['toCommon']>[0],
+      );
+      const found = windows.find((w) => w.window === window);
+      return (found?.accountValueHistory ?? []).map(([time, value]) => ({
+        time,
+        equity: Number(value),
+      }));
+    });
   }
 
   // ── IDeadManSwitch (HL : scheduleCancel, échéance = timestamp absolu ms) ──
