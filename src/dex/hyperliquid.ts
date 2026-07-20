@@ -2,6 +2,8 @@ import { type HyperliquidClient, type InitOptions, init } from '../common/config
 import type {
   Balance,
   Candle,
+  EquityPoint,
+  EquityRange,
   FrontendOrder,
   FundingRate,
   Hex,
@@ -610,6 +612,23 @@ class HyperliquidAccount implements IAccount, IDeadManSwitch {
       { amount: input.amount, address: input.address },
       this.signed(),
     ).then((r) => ack.toCommon(r));
+  }
+
+  // Courbe d'équité mark-to-market normalisée (cœur commun) : réutilise le `portfolio` natif, en
+  // extrait la fenêtre demandée (`all` → `allTime` côté HL) et la réduit à {time, equity}. Le détail
+  // riche (pnlHistory, volume, autres fenêtres) reste accessible via `native.account().getPortfolio()`.
+  public getEquityHistory(range: EquityRange = 'month'): Promise<EquityPoint[]> {
+    const window = range === 'all' ? 'allTime' : range;
+    return getPortfolio(this.client, { user: this.user() as Hex }, this.signed()).then((res) => {
+      const windows = new PortfolioConverter().toCommon(
+        res as Parameters<PortfolioConverter['toCommon']>[0],
+      );
+      const found = windows.find((w) => w.window === window);
+      return (found?.accountValueHistory ?? []).map(([time, value]) => ({
+        time,
+        equity: Number(value),
+      }));
+    });
   }
 
   // ── IDeadManSwitch (HL : scheduleCancel, échéance = timestamp absolu ms) ──
